@@ -1,13 +1,16 @@
-const CACHE = 'workout-log-v1';
+const CACHE = 'my-apps-v1';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
-  './app.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
+  './workout/',
+  './workout/index.html',
+  './workout/styles.css',
+  './workout/app.js',
 ];
 
 self.addEventListener('install', e => {
