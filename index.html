@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ワークアウトログ</title>
+<meta name="theme-color" content="#f4f2ed">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="筋トレログ">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<header class="app-header">
+  <h1>ワークアウトログ</h1>
+  <p class="subtitle">胸・腹・腕 / 週3回・30分 / 脚の種目なし</p>
+</header>
+
+<main>
+  <!-- ホーム -->
+  <section id="view-home" class="view active">
+    <div class="card">
+      <div class="card-head">
+        <h2>次回のメニュー</h2>
+        <span id="week-count" class="badge"></span>
+      </div>
+      <p id="next-template" class="template-name"></p>
+      <ul id="next-exercises" class="exercise-list"></ul>
+      <button id="btn-start" class="primary">この内容で記録する</button>
+    </div>
+    <div class="card">
+      <h2>直近の記録</h2>
+      <div id="recent-list"></div>
+    </div>
+  </section>
+
+  <!-- 記録入力 -->
+  <section id="view-editor" class="view">
+    <div class="card">
+      <h2 id="editor-title">記録する</h2>
+      <label class="field">日付
+        <input type="date" id="f-date">
+      </label>
+      <label class="field">テンプレート
+        <select id="f-template">
+          <option value="A">A（胸＋三頭）</option>
+          <option value="B">B（腕＋肩）</option>
+          <option value="C">C（胸＋腹）</option>
+          <option value="free">自由</option>
+        </select>
+      </label>
+      <div id="editor-exercises"></div>
+      <label class="field">種目を追加
+        <span class="row">
+          <select id="f-add-exercise"></select>
+          <button id="btn-add-exercise" type="button">追加</button>
+        </span>
+      </label>
+      <div class="field">脚の疲労感（1=なし 〜 5=重い）
+        <div id="f-leg" class="seg">
+          <button type="button" data-v="1">1</button>
+          <button type="button" data-v="2">2</button>
+          <button type="button" data-v="3">3</button>
+          <button type="button" data-v="4">4</button>
+          <button type="button" data-v="5">5</button>
+        </div>
+      </div>
+      <label class="field">次のランの感覚メモ
+        <input type="text" id="f-runfeel" placeholder="例：脚は軽い、右ふくらはぎに張り">
+      </label>
+      <label class="field">メモ
+        <input type="text" id="f-note" placeholder="任意">
+      </label>
+      <div class="row">
+        <button id="btn-save" class="primary">保存する</button>
+        <button id="btn-cancel" type="button">キャンセル</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 履歴 -->
+  <section id="view-history" class="view">
+    <div class="card">
+      <h2>履歴</h2>
+      <div id="history-list"></div>
+    </div>
+  </section>
+
+  <!-- 進捗 -->
+  <section id="view-progress" class="view">
+    <div class="card">
+      <h2>種目ごとの伸び</h2>
+      <div id="progress-list"></div>
+      <p class="hint">進行ルール：全セット目標クリア＆RPE7以下で次回+1回（秒数は+5秒）。RPE9以上か未達なら据え置き。</p>
+    </div>
+  </section>
+
+  <!-- 設定 -->
+  <section id="view-settings" class="view">
+    <div class="card">
+      <h2>設定</h2>
+      <label class="field">週の目標回数
+        <input type="number" id="s-weekly" min="1" max="14" step="1">
+      </label>
+      <label class="field">1回の目標時間（分）
+        <input type="number" id="s-minutes" min="5" max="180" step="5">
+      </label>
+      <button id="btn-save-settings" class="primary">設定を保存</button>
+    </div>
+    <div class="card">
+      <h2>データのバックアップ</h2>
+      <p class="hint">記録はこの端末のブラウザ内（localStorage）にだけ保存されます。機種変更やブラウザのデータ消去で消えるので、ときどきJSONで書き出して手元に保管してください。書き出したファイルはこのアプリに読み込んで復元できます。</p>
+      <div class="row">
+        <button id="btn-export" type="button">JSONで書き出す</button>
+        <label class="file-btn">JSONを読み込む
+          <input type="file" id="f-import" accept="application/json,.json" hidden>
+        </label>
+      </div>
+      <button id="btn-wipe" type="button" class="danger">全データを削除</button>
+    </div>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button data-view="view-home" class="active">ホーム</button>
+  <button data-view="view-history">履歴</button>
+  <button data-view="view-progress">進捗</button>
+  <button data-view="view-settings">設定</button>
+</nav>
+
+<script src="./app.js"></script>
+</body>
+</html>
