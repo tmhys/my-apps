@@ -10,7 +10,7 @@
 
 | モジュール | 場所 | データの持ち方 | 内容 |
 |---|---|---|---|
-| ワークアウトログ | `workout/` | 端末内のみ | 自宅筋トレ（胸・腹・腕）の記録。A/B/Cローテーション、進行ルール、脚の疲労感の記録 |
+| ワークアウトログ | `workout/` | 端末内のみ | 自宅筋トレの記録。A/B/Cローテーション＋背中・脚・フットケア、進行ルール、脚の疲労感の記録 |
 | 立替精算 | `reimburse/` | 接続先のGAS | 妻が立て替えた分の未精算と送金額。送金したら精算済みにする。バックエンドは [tmhys/gas](https://github.com/tmhys/gas) の `receipt-reimbursement` |
 | 買い物メモ | `shopping/` | 接続先のGAS | LINE で来た「買っといて」と欲しいもの。発注待ち／未確認／欲しいもの／発注済の4タブ。バックエンドは [tmhys/gas](https://github.com/tmhys/gas) の `household-ordering` |
 
