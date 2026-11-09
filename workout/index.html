@@ -15,6 +15,17 @@
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
+<!-- レストタイマー。セットを入れると自動で動き出し、残りをここに出す -->
+<div id="rest-bar" class="rest-bar" hidden>
+  <button id="rest-minus" type="button" aria-label="15秒減らす">−15</button>
+  <div class="rest-main">
+    <div class="rest-time"><span id="rest-left">0:00</span></div>
+    <div class="rest-track"><div id="rest-fill" class="rest-fill"></div></div>
+  </div>
+  <button id="rest-plus" type="button" aria-label="15秒増やす">+15</button>
+  <button id="rest-skip" type="button" class="rest-skip">終了</button>
+</div>
+
 <header class="app-header">
   <a class="back" href="../">← ツール一覧に戻る</a>
   <h1>ワークアウトログ</h1>
@@ -97,6 +108,31 @@
   <!-- 進捗 -->
   <section id="view-progress" class="view">
     <div class="card">
+      <h2>続いているか</h2>
+      <div id="streak-summary" class="streak-summary"></div>
+      <div id="calendar"></div>
+      <p class="hint">濃いマスがやった日。文字はメニュー（A〜E）。</p>
+    </div>
+
+    <div class="card">
+      <h2>1回あたりの総回数</h2>
+      <div id="volume-chart"></div>
+      <p class="hint">直近12回のセット×回数の合計。秒数の種目は含めない（単位が違うため）。</p>
+    </div>
+
+    <div class="card">
+      <h2>部位のバランス（直近4週）</h2>
+      <div id="muscle-balance"></div>
+      <p class="hint">セット数の配分。脚は意図的に少なくしている（マラソンのタイムを落とさないため）。</p>
+    </div>
+
+    <div class="card">
+      <h2>自己ベスト</h2>
+      <div id="pr-list"></div>
+      <p class="hint">1セットの最高記録。自重とチューブは重量が動かないので、回数と秒数が自己ベストになる。</p>
+    </div>
+
+    <div class="card">
       <h2>種目ごとの伸び</h2>
       <div id="progress-list"></div>
       <p class="hint">進行ルール：全セット目標クリア＆RPE7以下で次回+1回（秒数は+5秒）。RPE9以上か未達なら据え置き。</p>
@@ -112,6 +148,9 @@
       </label>
       <label class="field">1回の目標時間（分）
         <input type="number" id="s-minutes" min="5" max="180" step="5">
+      </label>
+      <label class="field">セット間の休憩（秒）／0で止める
+        <input type="number" id="s-rest" min="0" max="600" step="5">
       </label>
       <button id="btn-save-settings" class="primary">設定を保存</button>
     </div>

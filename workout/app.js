@@ -267,7 +267,7 @@ function menuLabel(id) {
 function groupOf(id) { return MENUS[id] ? MENUS[id].group : (LEGACY_LABEL[id] ? id : null); }
 
 function defaultState() {
-  return { settings: { weeklyTarget: 3, targetMinutes: 30 }, sessions: [] };
+  return { settings: { weeklyTarget: 3, targetMinutes: 30, restSec: 60 }, sessions: [] };
 }
 function load() {
   try {
@@ -275,6 +275,8 @@ function load() {
     if (!raw) return defaultState();
     const s = JSON.parse(raw);
     if (!s || !Array.isArray(s.sessions) || !s.settings) return defaultState();
+    // 古い書き出しを読んでも落ちないよう、後から足した設定は既定で埋める。
+    if (typeof s.settings.restSec !== 'number') s.settings.restSec = 60;
     return s;
   } catch { return defaultState(); }
 }
@@ -336,6 +338,168 @@ function fmtSets(log) {
   const unit = EX[log.key] && EX[log.key].unit === 'sec' ? '秒' : '回';
   return log.sets.join(' / ') + unit;
 }
+function unitOf(key) { return EX[key] && EX[key].unit === 'sec' ? '秒' : '回'; }
+
+/* ---------- 集計 ---------- */
+
+/**
+ * 種目ごとの自己ベスト。1セットの最高値と、それを出した日。
+ *
+ * 自重とチューブは重量が動かないので、回数と秒数が自己ベストになる。
+ * 重量を扱うアプリの 1RM 推定はここでは意味を持たないので置かない。
+ */
+function personalBests() {
+  const best = {};
+  state.sessions.forEach(s => {
+    (s.logs || []).forEach(l => {
+      (l.sets || []).forEach(v => {
+        const n = Number(v) || 0;
+        if (n <= 0) return;
+        if (!best[l.key] || n > best[l.key].value) best[l.key] = { value: n, date: s.date };
+      });
+    });
+  });
+  return best;
+}
+
+/** 保存前の自己ベスト。保存時に更新を見つけるために使う。 */
+function bestValueFor(key) {
+  const b = personalBests()[key];
+  return b ? b.value : 0;
+}
+
+/** 1回分の総回数。秒数の種目は単位が違うので混ぜない。 */
+function sessionVolume(s) {
+  let total = 0;
+  (s.logs || []).forEach(l => {
+    if (EX[l.key] && EX[l.key].unit === 'sec') return;
+    (l.sets || []).forEach(v => { total += Number(v) || 0; });
+  });
+  return total;
+}
+
+/** 直近 n 週の部位別セット数。 */
+function muscleBalance(weeks) {
+  const from = new Date();
+  from.setDate(from.getDate() - weeks * 7);
+  const lo = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, '0')}-${String(from.getDate()).padStart(2, '0')}`;
+  const by = {};
+  state.sessions.filter(s => s.date >= lo).forEach(s => {
+    (s.logs || []).forEach(l => {
+      const ex = EX[l.key];
+      if (!ex) return;
+      by[ex.muscle] = (by[ex.muscle] || 0) + (l.sets || []).length;
+    });
+  });
+  return by;
+}
+
+/** 連続して週の目標を満たした週の数と、今週の消化数。 */
+function streak() {
+  const dates = new Set(state.sessions.map(s => s.date));
+  const target = state.settings.weeklyTarget || 3;
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const now = new Date();
+  const dow = (now.getDay() + 6) % 7;
+  let weeks = 0;
+  // 今週は途中なので数えない。先週から遡って、目標を満たした週を数える。
+  for (let i = 1; i < 104; i++) {
+    const mon = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow - i * 7);
+    let n = 0;
+    for (let d = 0; d < 7; d++) {
+      const day = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + d);
+      if (dates.has(fmt(day))) n++;
+    }
+    if (n >= target) weeks++; else break;
+  }
+  return { weeks: weeks, thisWeek: weekCount(), target: target };
+}
+
+/* ---------- レストタイマー ----------
+   どの筋トレアプリも中核に置いている機能。セットを入れたら自動で動き出し、
+   残りを画面上部に出す。30分で終わらせる運用では、休みすぎの防止に効く。
+   0 秒に設定すると止まる。 */
+
+let restEnd = 0;        // 終了時刻（ミリ秒）。0 なら止まっている
+let restTotal = 0;      // 進み具合のバー用
+let restTick = null;
+
+function restEls() {
+  return {
+    bar: document.getElementById('rest-bar'),
+    left: document.getElementById('rest-left'),
+    fill: document.getElementById('rest-fill'),
+  };
+}
+
+function fmtClock(sec) {
+  const m = Math.floor(sec / 60), r = sec % 60;
+  return `${m}:${String(r).padStart(2, '0')}`;
+}
+
+function startRest(sec) {
+  const n = Number(sec) || 0;
+  if (n <= 0) return;           // 設定が 0 なら使わない
+  restTotal = n;
+  restEnd = Date.now() + n * 1000;
+  restEls().bar.hidden = false;
+  if (!restTick) restTick = setInterval(tickRest, 200);
+  tickRest();
+}
+
+function stopRest() {
+  restEnd = 0;
+  if (restTick) { clearInterval(restTick); restTick = null; }
+  restEls().bar.hidden = true;
+}
+
+function addRest(sec) {
+  if (!restEnd) return;
+  restEnd = Math.max(Date.now() + 1000, restEnd + sec * 1000);
+  restTotal = Math.max(restTotal + sec, 1);
+  tickRest();
+}
+
+function tickRest() {
+  const { left, fill } = restEls();
+  const ms = restEnd - Date.now();
+  if (ms <= 0) { restDone(); return; }
+  const sec = Math.ceil(ms / 1000);
+  left.textContent = fmtClock(sec);
+  fill.style.width = `${Math.max(0, Math.min(100, (1 - sec / restTotal) * 100))}%`;
+}
+
+function restDone() {
+  stopRest();
+  beep();
+  try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch (e) { /* 使えない端末は鳴らすだけ */ }
+}
+
+/** 短い電子音。音声ファイルを持たずに鳴らす（オフラインでも鳴るように）。 */
+function beep() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.45);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.5);
+    osc.onended = () => { try { ctx.close(); } catch (e) { /* noop */ } };
+  } catch (e) {
+    /* 音が出せない端末でも、バイブと表示で足りる */
+  }
+}
+
+document.getElementById('rest-skip').addEventListener('click', stopRest);
+document.getElementById('rest-minus').addEventListener('click', () => addRest(-15));
+document.getElementById('rest-plus').addEventListener('click', () => addRest(15));
 
 /* ---------- 画面遷移 ---------- */
 const views = ['view-home', 'view-editor', 'view-history', 'view-progress', 'view-settings'];
@@ -443,10 +607,13 @@ function renderEditorLogs() {
     const div = document.createElement('div');
     div.className = 'ex-block';
     const unitLabel = ex.unit === 'sec' ? '秒' : '回';
+    const best = personalBests()[log.key];
     div.innerHTML = `
       <div class="ex-head"><span class="ex-art"></span><div><h3></h3>
       <div class="ex-meta">${MUSCLE_LABEL[ex.muscle]} ・ ${ex.equipment} ・ 目標 ${log.target}${unitLabel} × ${log.sets.length}セット</div>
-      <div class="ex-desc"></div></div></div>
+      <div class="ex-desc"></div>
+      ${best ? `<div class="ex-pr">自己ベスト ${best.value}${unitLabel}（${best.date.slice(5).replace('-', '/')}）</div>` : ''}
+      </div></div>
       <div class="sets"></div>
       <div class="ex-row">
         <label>RPE（きつさ 1〜10）<input type="number" min="1" max="10" step="1" inputmode="numeric" data-f="effort" placeholder="例：7"></label>
@@ -461,7 +628,17 @@ function renderEditorLogs() {
       const inp = document.createElement('input');
       inp.type = 'number'; inp.min = '0'; inp.max = '999'; inp.inputMode = 'numeric';
       inp.value = v;
-      inp.addEventListener('input', () => { log.sets[si] = parseInt(inp.value, 10) || 0; });
+      // 初めてやる種目はこれまでの最高が 0。保存時の判定（top > prev）と揃える。
+      const prevBest = best ? best.value : 0;
+      if ((Number(v) || 0) > prevBest) inp.classList.add('is-pr');
+      inp.addEventListener('input', () => {
+        log.sets[si] = parseInt(inp.value, 10) || 0;
+        inp.classList.toggle('is-pr', log.sets[si] > prevBest);
+      });
+      // 入力を終えた＝そのセットが終わった、とみなして休憩を始める。
+      inp.addEventListener('change', () => {
+        if (log.sets[si] > 0) startRest(state.settings.restSec);
+      });
       setsWrap.appendChild(inp);
     });
     const addBtn = document.createElement('button');
@@ -499,7 +676,7 @@ document.querySelectorAll('#f-leg button').forEach(b =>
     document.querySelectorAll('#f-leg button').forEach(x =>
       x.classList.toggle('on', Number(x.dataset.v) === editorLeg));
   }));
-document.getElementById('btn-cancel').addEventListener('click', () => show('view-home'));
+document.getElementById('btn-cancel').addEventListener('click', () => { stopRest(); show('view-home'); });
 document.getElementById('btn-save').addEventListener('click', () => {
   const date = document.getElementById('f-date').value;
   if (!date) { alert('日付を選んでください'); return; }
@@ -515,6 +692,16 @@ document.getElementById('btn-save').addEventListener('click', () => {
       effort: Number.isFinite(effort) && effort >= 1 && effort <= 10 ? effort : null,
     };
   });
+  // 保存する前の自己ベストと比べる（保存後だと今回の記録が混ざる）。
+  const before = personalBests();
+  const broke = logs
+    .map(l => {
+      const top = Math.max(0, ...l.sets);
+      const prev = before[l.key] ? before[l.key].value : 0;
+      return top > prev ? `${EX[l.key].name} ${top}${unitOf(l.key)}` : null;
+    })
+    .filter(Boolean);
+
   state.sessions.push({
     id: uid(),
     date,
@@ -525,7 +712,9 @@ document.getElementById('btn-save').addEventListener('click', () => {
     logs,
   });
   save();
+  stopRest();
   currentMenu = null; // 次回メニューを再計算
+  if (broke.length) alert(`自己ベスト更新\n\n${broke.join('\n')}`);
   show('view-history');
 });
 
@@ -571,6 +760,104 @@ function renderHistory() {
 
 /* ---------- 進捗 ---------- */
 function renderProgress() {
+  renderCalendar();
+  renderVolume();
+  renderBalance();
+  renderPR();
+  renderNextTargets();
+}
+
+/** 続いているか。直近12週のカレンダー。 */
+function renderCalendar() {
+  const byDate = {};
+  state.sessions.forEach(s => { byDate[s.date] = groupOf(s.template) || '-'; });
+
+  const st = streak();
+  const sum = document.getElementById('streak-summary');
+  sum.textContent = st.weeks
+    ? `今週 ${st.thisWeek}/${st.target} 回 ・ 週の目標を ${st.weeks} 週つづけて達成中`
+    : `今週 ${st.thisWeek}/${st.target} 回`;
+
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const now = new Date();
+  const dow = (now.getDay() + 6) % 7;
+  const WEEKS = 12;
+  const wrap = document.getElementById('calendar');
+  wrap.innerHTML = '';
+
+  const grid = document.createElement('div');
+  grid.className = 'cal-grid';
+  for (let w = WEEKS - 1; w >= 0; w--) {
+    for (let d = 0; d < 7; d++) {
+      const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow - w * 7 + d);
+      const key = fmt(day);
+      const cell = document.createElement('div');
+      cell.className = 'cal-cell';
+      if (day > now) cell.classList.add('future');
+      if (byDate[key]) {
+        cell.classList.add('on');
+        cell.textContent = byDate[key];
+      }
+      cell.title = key;
+      grid.appendChild(cell);
+    }
+  }
+  wrap.appendChild(grid);
+}
+
+/** 1回あたりの総回数。直近12回を棒で。 */
+function renderVolume() {
+  const wrap = document.getElementById('volume-chart');
+  const rows = sortedSessions().slice(0, 12).reverse()
+    .map(s => ({ date: s.date.slice(5).replace('-', '/'), v: sessionVolume(s) }))
+    .filter(r => r.v > 0);
+
+  if (!rows.length) { wrap.innerHTML = '<p class="empty">記録が貯まるとここに表示されます</p>'; return; }
+
+  const max = Math.max(...rows.map(r => r.v));
+  wrap.innerHTML =
+    '<div class="bars">' +
+    rows.map(r =>
+      `<div class="bar-col"><div class="bar-v">${r.v}</div>` +
+      `<div class="bar" style="height:${Math.max(4, Math.round(r.v / max * 100))}%"></div>` +
+      `<div class="bar-x">${r.date}</div></div>`
+    ).join('') + '</div>';
+}
+
+/** 部位のバランス。直近4週のセット数を横棒で。 */
+function renderBalance() {
+  const wrap = document.getElementById('muscle-balance');
+  const by = muscleBalance(4);
+  const keys = Object.keys(MUSCLE_LABEL).filter(k => by[k]);
+  if (!keys.length) { wrap.innerHTML = '<p class="empty">直近4週の記録がありません</p>'; return; }
+
+  const total = keys.reduce((a, k) => a + by[k], 0);
+  const max = Math.max(...keys.map(k => by[k]));
+  wrap.innerHTML = keys.sort((a, b) => by[b] - by[a]).map(k =>
+    `<div class="mb-row"><div class="mb-head">` +
+    `<span>${MUSCLE_LABEL[k]}</span>` +
+    `<span class="mb-n">${by[k]}セット・${Math.round(by[k] / total * 100)}%</span></div>` +
+    `<div class="mb-track"><div class="mb-fill" style="width:${Math.round(by[k] / max * 100)}%"></div></div></div>`
+  ).join('');
+}
+
+/** 自己ベスト。 */
+function renderPR() {
+  const wrap = document.getElementById('pr-list');
+  const best = personalBests();
+  const keys = CATALOG.map(e => e.key).filter(k => best[k]);
+  if (!keys.length) { wrap.innerHTML = '<p class="empty">記録が貯まるとここに表示されます</p>'; return; }
+
+  wrap.innerHTML = keys.map(k =>
+    `<div class="pr-row"><span class="pr-name"></span>` +
+    `<span class="pr-v">${best[k].value}${unitOf(k)}<span class="pr-d"> ${best[k].date.slice(5).replace('-', '/')}</span></span></div>`
+  ).join('');
+  // 種目名はテキストとして入れる（名前に記号が入っても壊れないように）
+  wrap.querySelectorAll('.pr-name').forEach((el, i) => { el.textContent = EX[keys[i]].name; });
+}
+
+/** 種目ごとの前回と次回目標。 */
+function renderNextTargets() {
   const wrap = document.getElementById('progress-list');
   wrap.innerHTML = '';
   let any = false;
@@ -584,7 +871,7 @@ function renderProgress() {
     div.innerHTML = `<div class="session-head"><span class="date"></span><span class="target"></span></div>
       <div class="session-detail"></div>`;
     div.querySelector('.date').textContent = ex.name;
-    div.querySelector('.target').textContent = `次回 ${nt.sets}セット × ${nt.target}${ex.unit === 'sec' ? '秒' : '回'}`;
+    div.querySelector('.target').textContent = `次回 ${nt.sets}セット × ${nt.target}${unitOf(ex.key)}`;
     div.querySelector('.session-detail').textContent =
       `前回（${found.session.date}）：${fmtSets(found.log)}${found.log.effort ? ` RPE${found.log.effort}` : ''}`;
     wrap.appendChild(div);
@@ -596,12 +883,15 @@ function renderProgress() {
 function renderSettings() {
   document.getElementById('s-weekly').value = state.settings.weeklyTarget;
   document.getElementById('s-minutes').value = state.settings.targetMinutes;
+  document.getElementById('s-rest').value = state.settings.restSec;
 }
 document.getElementById('btn-save-settings').addEventListener('click', () => {
   const w = parseInt(document.getElementById('s-weekly').value, 10);
   const m = parseInt(document.getElementById('s-minutes').value, 10);
   if (Number.isFinite(w) && w >= 1 && w <= 14) state.settings.weeklyTarget = w;
   if (Number.isFinite(m) && m >= 5 && m <= 180) state.settings.targetMinutes = m;
+  const r = parseInt(document.getElementById('s-rest').value, 10);
+  if (Number.isFinite(r) && r >= 0 && r <= 600) state.settings.restSec = r;
   save();
   alert('設定を保存しました');
 });

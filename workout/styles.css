@@ -181,3 +181,62 @@ button.danger { color: var(--danger); border-color: var(--danger); margin-top: 1
 .menu-note { font-size: 12px; color: var(--danger); margin: 0 0 6px; min-height: 1em; }
 .menu-row { margin-top: 8px; }
 .menu-row button { font-size: 13px; padding: 9px 10px; }
+
+/* ---------- レストタイマー ---------- */
+/* display を指定すると hidden 属性（UA の display:none）を打ち消してしまうので、
+   消えている状態を明示する。これが無いとタイマーが出っぱなしになる。 */
+.rest-bar[hidden] { display: none; }
+.rest-bar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; background: var(--accent); color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,.12);
+}
+.rest-bar button {
+  flex: none; font-family: inherit; font-size: 12px; font-weight: 700;
+  padding: 7px 9px; border-radius: 8px; cursor: pointer;
+  background: rgba(255,255,255,.16); color: #fff; border: 0;
+}
+.rest-bar .rest-skip { background: #fff; color: var(--accent); }
+.rest-main { flex: 1; min-width: 0; }
+.rest-time { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.rest-track { height: 4px; background: rgba(255,255,255,.3); border-radius: 2px; margin-top: 4px; overflow: hidden; }
+.rest-fill { height: 100%; width: 0; background: #fff; border-radius: 2px; }
+
+/* ---------- 自己ベスト ---------- */
+.ex-pr { font-size: 11px; color: var(--accent); font-weight: 700; margin-top: 3px; }
+.sets input.is-pr { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.pr-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px;
+  padding: 7px 0; border-top: 1px solid var(--line); }
+.pr-row:first-child { border-top: none; }
+.pr-v { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 700; }
+.pr-d { color: var(--sub); font-weight: 400; font-size: 11px; }
+
+/* ---------- 続いているか（カレンダー） ---------- */
+.streak-summary { font-size: 13px; margin-bottom: 10px; }
+/* 週を列、曜日を行にする（縦に並べると12週で画面を使いすぎる）。
+   app.js は週ごとに7日ぶんを続けて出すので、列方向に流せばそのまま並ぶ。 */
+.cal-grid { display: grid; grid-template-rows: repeat(7, 1fr); grid-auto-flow: column;
+  grid-auto-columns: 1fr; gap: 3px; }
+.cal-cell {
+  aspect-ratio: 1; border-radius: 4px; background: var(--line);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700; color: transparent;
+}
+.cal-cell.on { background: var(--accent); color: #fff; }
+.cal-cell.future { opacity: .35; }
+
+/* ---------- 総回数の棒グラフ ---------- */
+.bars { display: flex; align-items: flex-end; gap: 4px; height: 128px; }
+.bar-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end;
+  align-items: center; height: 100%; gap: 3px; min-width: 0; }
+.bar { width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 4px; }
+.bar-v { font-size: 9px; color: var(--sub); font-variant-numeric: tabular-nums; }
+.bar-x { font-size: 9px; color: var(--sub); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* ---------- 部位のバランス ---------- */
+.mb-row { margin-bottom: 10px; }
+.mb-head { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; margin-bottom: 4px; }
+.mb-n { color: var(--sub); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mb-track { height: 7px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.mb-fill { height: 100%; background: var(--accent); border-radius: 4px; }
