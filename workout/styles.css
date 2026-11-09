@@ -115,16 +115,33 @@ button.danger { color: var(--danger); border-color: var(--danger); margin-top: 1
 
 .back { display: inline-block; font-size: 13px; color: var(--accent); text-decoration: none; margin-bottom: 6px; }
 
-/* 種目イラスト（小さなアニメーション付きピクトグラム） */
-.ex-art { flex: none; width: 46px; height: 46px; display: inline-flex; }
-.ex-art .art { width: 46px; height: 46px; }
-.art line, .art circle, .art path {
-  stroke: #55605a; stroke-width: 2.4; fill: none;
+/* 種目イラスト（開始姿勢を薄く重ねた、動き付きの図）
+   46px だと線が潰れて何の動作か読めなかったので、描き方ごと作り替えた。
+   一覧は 64px、記録画面は 88px。記録画面はフォームを確かめながら見るので大きくする。 */
+.ex-art { flex: none; width: 64px; height: 64px; display: inline-flex; }
+.ex-art .art { width: 64px; height: 64px; }
+.ex-head .ex-art, .ex-head .ex-art .art { width: 88px; height: 88px; }
+.art line, .art circle, .art path, .art ellipse {
+  stroke: var(--ink); stroke-width: 2.6; fill: none;
   stroke-linecap: round; stroke-linejoin: round;
 }
-.art circle { fill: #e9e4d8; }
-.art .fl { stroke: #c9c2b2; stroke-width: 2; }
-.art .band { stroke: var(--accent); stroke-dasharray: 3 2; }
+.art .bd { stroke-width: 5.5; }   /* 胴 */
+.art .lb { stroke-width: 3.4; }   /* 手足 */
+.art .hd { fill: var(--ink); stroke: none; }  /* 頭 */
+.art .fl { stroke: #c9c2b2; stroke-width: 2.4; }
+.art .band { stroke: var(--accent); stroke-dasharray: 3.5 2.5; stroke-width: 2.4; }
+.art .gear { stroke: var(--ink); stroke-width: 3; }
+.art .foot, .art .toe { stroke-width: 3.2; }
+.art .sole { fill: var(--ink); stroke: none; }
+/* 開始姿勢。薄く置いて「どこから動くか」を見せる */
+.art .gh { opacity: .22; }
+/* 効く部位 */
+.art .hi { fill: var(--accent); opacity: .22; stroke: none; }
+/* 動く向き。軸を細く、先端を大きくしないと小さい図では棒に見える */
+.art .ar { stroke: var(--accent); stroke-width: 1.7; }
+.art .ah { fill: var(--accent); stroke: none; }
+/* 止める種目（プランク）の一直線 */
+.art .hold { stroke: var(--accent); stroke-width: 1.8; stroke-dasharray: 2 3; opacity: .7; }
 .art g { transform-box: fill-box; }
 .og-c { transform-origin: center; }
 .og-lt { transform-origin: left top; }

@@ -37,36 +37,210 @@ const CATALOG = [
 ];
 const EX = Object.fromEntries(CATALOG.map(e => [e.key, e]));
 
-/* ---------- 種目の小さなアニメーション（パターン別ピクトグラム） ---------- */
+/* ---------- 種目のイラスト ----------
+   48px の棒人間では何の動作か読めなかったので作り替えたもの。
+   ・体に太さを与える（胴は太く、手足は細く、頭は塗り）
+   ・開始姿勢を薄く重ねて、どこからどこへ動くかを見せる
+   ・動く向きを矢印で示す（軸は細く、先端は大きく。小さいと棒に見える）
+   ・効く部位をアクセント色の面で置く
+   viewBox は 64。48 のままだと線が潰れて描き分けられない。 */
+/** (x1,y1)→(x2,y2) の矢印。先端の三角を向きに合わせて描く。 */
+function arr(x1, y1, x2, y2) {
+  const a = Math.atan2(y2 - y1, x2 - x1);
+  const h = 7.5, w = 0.40;
+  const ax = (x2 - h * Math.cos(a - w)).toFixed(1), ay = (y2 - h * Math.sin(a - w)).toFixed(1);
+  const bx = (x2 - h * Math.cos(a + w)).toFixed(1), by = (y2 - h * Math.sin(a + w)).toFixed(1);
+  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/><path d="M${ax} ${ay} L${x2} ${y2} L${bx} ${by}Z" class="ah"/>`;
+}
+const A1 = (x1, y1, x2, y2) => `<g class="ar">${arr(x1, y1, x2, y2)}</g>`;
+const A2 = (x1, y1, x2, y2) => `<g class="ar">${arr(x1, y1, x2, y2)}${arr(x2, y2, x1, y1)}</g>`;
+/** 効く部位。丸い色面を薄く置く。 */
+const HI = (cx, cy, rx, ry) => `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" class="hi"/>`;
+
 const FIG = {
-  stand: '<circle cx="24" cy="8" r="3.4"/><line x1="24" y1="12" x2="24" y2="27"/><line x1="24" y1="27" x2="18" y2="41"/><line x1="24" y1="27" x2="30" y2="41"/>',
-  floor: '<line x1="3" y1="43" x2="45" y2="43" class="fl"/>',
+  floor: '<line x1="3" y1="57" x2="61" y2="57" class="fl"/>',
+  // 横向きに立つ（右を向く）
+  stand: '<circle cx="30" cy="12" r="5" class="hd"/><line x1="30" y1="17" x2="30" y2="35" class="bd"/>' +
+         '<line x1="30" y1="35" x2="25" y2="56" class="lb"/><line x1="30" y1="35" x2="36" y2="56" class="lb"/>',
+  // 正面に立つ
+  front: '<circle cx="32" cy="12" r="5" class="hd"/><line x1="32" y1="17" x2="32" y2="35" class="bd"/>' +
+         '<line x1="32" y1="35" x2="26" y2="56" class="lb"/><line x1="32" y1="35" x2="38" y2="56" class="lb"/>',
 };
+
 const ART = {
-  push:      FIG.floor + '<g class="mv-bob"><line x1="9" y1="24" x2="33" y2="24"/><circle cx="37" cy="22" r="3.2"/><line x1="15" y1="24" x2="15" y2="38"/><line x1="9" y1="24" x2="4" y2="38"/></g>',
-  plank:     FIG.floor + '<g class="mv-bob"><line x1="9" y1="26" x2="33" y2="26"/><circle cx="37" cy="24" r="3.2"/><line x1="13" y1="26" x2="13" y2="34"/><line x1="13" y1="34" x2="18" y2="34"/><line x1="9" y1="26" x2="4" y2="38"/></g>',
-  press:     FIG.floor + FIG.stand + '<g class="mv-slide"><line x1="24" y1="17" x2="39" y2="17"/><line x1="39" y1="17" x2="39" y2="24" class="band"/></g>',
-  pressup:   FIG.floor + FIG.stand + '<g class="mv-bobup"><line x1="24" y1="16" x2="15" y2="6"/><line x1="24" y1="16" x2="33" y2="6"/><line x1="15" y1="6" x2="33" y2="6" class="band"/></g>',
-  curl:      FIG.floor + FIG.stand + '<line x1="24" y1="16" x2="24" y2="25"/><g class="mv-swing og-lt"><line x1="24" y1="25" x2="31" y2="32"/></g><line x1="24" y1="34" x2="31" y2="41" class="band"/>',
-  raise:     FIG.floor + FIG.stand + '<g class="mv-swing-s og-c"><line x1="24" y1="16" x2="9" y2="21"/><line x1="24" y1="16" x2="39" y2="21"/></g>',
-  kickback:  FIG.floor + '<line x1="13" y1="18" x2="29" y2="18"/><circle cx="33" cy="16" r="3.2"/><line x1="17" y1="18" x2="14" y2="41"/><line x1="24" y1="18" x2="27" y2="41"/><line x1="15" y1="18" x2="15" y2="27"/><g class="mv-swing-n og-lt"><line x1="15" y1="27" x2="6" y2="34"/></g>',
-  extension: FIG.floor + FIG.stand + '<line x1="24" y1="16" x2="18" y2="9"/><g class="mv-swing-s og-lt"><line x1="18" y1="9" x2="24" y2="3"/></g><line x1="24" y1="3" x2="24" y2="14" class="band"/>',
-  roller:    FIG.floor + '<line x1="15" y1="29" x2="29" y2="17"/><circle cx="33" cy="15" r="3.2"/><line x1="17" y1="29" x2="12" y2="41"/><line x1="17" y1="29" x2="22" y2="41"/><g class="mv-slide"><line x1="29" y1="17" x2="38" y2="33"/><circle cx="40" cy="37" r="4"/></g>',
-  bug:       FIG.floor + '<line x1="12" y1="35" x2="31" y2="35"/><circle cx="8" cy="33" r="3.2"/><g class="mv-swing og-lt"><line x1="31" y1="35" x2="39" y2="27"/></g><g class="mv-swing-n og-rt"><line x1="12" y1="35" x2="5" y2="27"/></g>',
-  row:       FIG.floor + '<line x1="6" y1="39" x2="27" y2="39"/><line x1="27" y1="39" x2="27" y2="19"/><circle cx="27" cy="14" r="3.4"/><g class="mv-slide"><line x1="27" y1="23" x2="13" y2="30"/><line x1="13" y1="30" x2="13" y2="39" class="band"/></g>',
-  pullapart: FIG.floor + FIG.stand + '<g class="mv-spread og-c"><line x1="24" y1="17" x2="10" y2="15"/><line x1="24" y1="17" x2="38" y2="15"/><line x1="10" y1="15" x2="38" y2="15" class="band"/></g>',
-  superman:  FIG.floor + '<g class="mv-lift og-c"><line x1="10" y1="33" x2="34" y2="33"/><circle cx="38" cy="31" r="3.2"/><line x1="34" y1="33" x2="43" y2="27"/><line x1="10" y1="33" x2="3" y2="27"/></g>',
-  hinge:     FIG.floor + '<line x1="24" y1="28" x2="19" y2="42"/><line x1="24" y1="28" x2="29" y2="42"/><g class="mv-hinge og-lb"><line x1="24" y1="28" x2="24" y2="11"/><circle cx="24" cy="7" r="3.4"/><line x1="24" y1="17" x2="24" y2="30" class="band"/></g>',
-  squat:     FIG.floor + '<g class="mv-squat"><circle cx="24" cy="7" r="3.4"/><line x1="24" y1="11" x2="24" y2="25"/><line x1="24" y1="15" x2="36" y2="17"/></g><line x1="24" y1="25" x2="16" y2="33"/><line x1="16" y1="33" x2="17" y2="42"/><line x1="24" y1="25" x2="32" y2="33"/><line x1="32" y1="33" x2="31" y2="42"/>',
-  lunge:     FIG.floor + '<g class="mv-bob"><circle cx="24" cy="7" r="3.4"/><line x1="24" y1="11" x2="24" y2="25"/><line x1="24" y1="15" x2="15" y2="20"/><line x1="24" y1="15" x2="33" y2="20"/></g><line x1="24" y1="25" x2="14" y2="32"/><line x1="14" y1="32" x2="14" y2="42"/><line x1="24" y1="25" x2="34" y2="34"/><line x1="34" y1="34" x2="38" y2="42"/>',
-  bridge:    FIG.floor + '<circle cx="7" cy="36" r="3.2"/><line x1="10" y1="38" x2="20" y2="38"/><g class="mv-bobup"><line x1="20" y1="38" x2="29" y2="29"/><line x1="29" y1="29" x2="29" y2="38"/></g>',
-  calf:      FIG.floor + '<g class="mv-calf">' + FIG.stand + '</g>',
-  towel:     FIG.floor + '<path d="M6 41 q4 -3 8 0 q4 3 8 0 q4 -3 8 0" class="band"/><g class="mv-slide"><path d="M30 38 l9 0 q3 0 3 3 l-13 0 q-2 -1 1 -3"/><line x1="33" y1="38" x2="32" y2="34"/><line x1="37" y1="38" x2="37" y2="34"/></g>',
-  toes:      FIG.floor + '<path d="M14 41 q-2 -8 3 -12 l4 -3"/><g class="mv-spread og-lb"><line x1="21" y1="26" x2="17" y2="19"/><line x1="23" y1="25" x2="22" y2="17"/><line x1="25" y1="25" x2="27" y2="18"/></g>',
-  ankle:     FIG.floor + '<line x1="24" y1="6" x2="24" y2="24"/><g class="mv-spin og-c"><line x1="24" y1="24" x2="24" y2="36"/><line x1="24" y1="36" x2="31" y2="38"/></g>',
+  // 腕立て。薄い図が上、濃い図が下（沈んだところ）
+  push: FIG.floor +
+    '<g class="gh"><circle cx="48" cy="20" r="4.6" class="hd"/><line x1="16" y1="38" x2="44" y2="22" class="bd"/>' +
+    '<line x1="42" y1="23" x2="42" y2="56" class="lb"/></g>' +
+    HI(38, 32, 7, 5) +
+    '<g class="mv-bob"><circle cx="48" cy="28" r="4.6" class="hd"/><line x1="16" y1="42" x2="44" y2="30" class="bd"/>' +
+    '<line x1="16" y1="42" x2="8" y2="56" class="lb"/><line x1="42" y1="31" x2="42" y2="56" class="lb"/></g>' +
+    A2(57, 20, 57, 42),
+
+  // プランク。止める種目なので矢印は出さず、一直線を点線で示す
+  plank: FIG.floor + HI(32, 36, 9, 4) +
+    '<circle cx="49" cy="30" r="4.6" class="hd"/><line x1="14" y1="40" x2="45" y2="32" class="bd"/>' +
+    '<line x1="14" y1="40" x2="7" y2="56" class="lb"/><line x1="43" y1="33" x2="43" y2="50" class="lb"/>' +
+    '<line x1="43" y1="50" x2="53" y2="50" class="lb"/>' +
+    '<line x1="8" y1="42" x2="52" y2="29" class="hold"/>',
+
+  // チェストプレス。薄い図が引いたところ、濃い図が押し出したところ
+  press: FIG.floor + FIG.stand + HI(30, 24, 6, 5) +
+    '<g class="gh"><line x1="30" y1="23" x2="38" y2="27" class="lb"/><line x1="38" y1="27" x2="38" y2="20" class="lb"/></g>' +
+    '<g class="mv-slide"><line x1="30" y1="23" x2="50" y2="23" class="lb"/></g>' +
+    '<path d="M30 25 q-7 6 0 11" class="band"/>' + A1(40, 12, 54, 12),
+
+  // ショルダープレス。薄い図が肩、濃い図が頭上
+  pressup: FIG.floor + FIG.front + HI(32, 21, 8, 4) +
+    '<g class="gh"><line x1="32" y1="22" x2="22" y2="24" class="lb"/><line x1="22" y1="24" x2="21" y2="17" class="lb"/>' +
+    '<line x1="32" y1="22" x2="42" y2="24" class="lb"/><line x1="42" y1="24" x2="43" y2="17" class="lb"/></g>' +
+    '<g class="mv-bobup"><line x1="32" y1="22" x2="21" y2="9" class="lb"/>' +
+    '<line x1="32" y1="22" x2="43" y2="9" class="lb"/></g>' +
+    '<line x1="21" y1="10" x2="26" y2="55" class="band"/><line x1="43" y1="10" x2="38" y2="55" class="band"/>' +
+    A1(54, 22, 54, 8),
+
+  // カール。薄い図が腕を下ろしたところ
+  curl: FIG.floor + FIG.stand + HI(35, 28, 4, 5) +
+    '<g class="gh"><line x1="30" y1="23" x2="35" y2="34" class="lb"/><line x1="35" y1="34" x2="38" y2="45" class="lb"/></g>' +
+    '<line x1="30" y1="23" x2="35" y2="34" class="lb"/>' +
+    '<g class="mv-swing og-lt"><line x1="35" y1="34" x2="44" y2="27" class="lb"/></g>' +
+    '<line x1="40" y1="45" x2="38" y2="55" class="band"/>' + A1(52, 40, 52, 24),
+
+  // サイドレイズ。薄い図が腕を下ろしたところ
+  raise: FIG.floor + FIG.front + HI(21, 23, 5, 4) + HI(43, 23, 5, 4) +
+    '<g class="gh"><line x1="32" y1="22" x2="26" y2="38" class="lb"/><line x1="32" y1="22" x2="38" y2="38" class="lb"/></g>' +
+    '<g class="mv-spread og-c"><line x1="32" y1="22" x2="12" y2="25" class="lb"/>' +
+    '<line x1="32" y1="22" x2="52" y2="25" class="lb"/></g>' +
+    A1(14, 40, 9, 28) + A1(50, 40, 55, 28),
+
+  // キックバック。前傾して肘を固定、前腕だけ後ろへ伸ばす
+  kickback: FIG.floor + HI(21, 32, 4, 5) +
+    '<circle cx="46" cy="22" r="4.8" class="hd"/><line x1="16" y1="30" x2="42" y2="24" class="bd"/>' +
+    '<line x1="20" y1="29" x2="19" y2="56" class="lb"/><line x1="30" y1="27" x2="33" y2="56" class="lb"/>' +
+    '<line x1="20" y1="29" x2="20" y2="40" class="lb"/>' +
+    '<g class="gh"><line x1="20" y1="40" x2="24" y2="50" class="lb"/></g>' +
+    '<g class="mv-swing-n og-lt"><line x1="20" y1="40" x2="8" y2="44" class="lb"/></g>' +
+    A1(18, 52, 6, 50),
+
+  // オーバーヘッドエクステンション。薄い図が頭の後ろ、濃い図が伸ばしたところ
+  extension: FIG.floor + FIG.stand + HI(28, 15, 4, 5) +
+    '<g class="gh"><line x1="30" y1="21" x2="24" y2="12" class="lb"/><line x1="24" y1="12" x2="33" y2="15" class="lb"/></g>' +
+    '<line x1="30" y1="21" x2="24" y2="12" class="lb"/>' +
+    '<g class="mv-swing-s og-lt"><line x1="24" y1="12" x2="31" y2="3" class="lb"/></g>' +
+    '<line x1="31" y1="4" x2="30" y2="19" class="band"/>' + A1(45, 16, 45, 4),
+
+  // 腹筋ローラー。薄い図が手前、濃い図が伸びたところ
+  roller: FIG.floor + HI(27, 36, 7, 5) +
+    '<g class="gh"><circle cx="38" cy="26" r="4.8" class="hd"/><line x1="20" y1="40" x2="35" y2="29" class="bd"/>' +
+    '<line x1="35" y1="29" x2="38" y2="46" class="lb"/></g>' +
+    '<circle cx="45" cy="21" r="4.8" class="hd"/><line x1="20" y1="40" x2="41" y2="24" class="bd"/>' +
+    '<line x1="20" y1="40" x2="13" y2="54" class="lb"/><line x1="13" y1="54" x2="26" y2="54" class="lb"/>' +
+    '<g class="mv-slide"><line x1="41" y1="25" x2="50" y2="45" class="lb"/>' +
+    '<circle cx="51" cy="49" r="6" class="gear"/><line x1="44" y1="49" x2="58" y2="49" class="gear"/></g>' +
+    A2(30, 12, 54, 12),
+
+  // デッドバグ／バードドッグ。四つん這いで対角の手足を伸ばす
+  bug: FIG.floor + HI(30, 36, 8, 4) +
+    '<circle cx="47" cy="28" r="4.8" class="hd"/><line x1="16" y1="36" x2="43" y2="31" class="bd"/>' +
+    '<g class="gh"><line x1="40" y1="32" x2="41" y2="54" class="lb"/><line x1="20" y1="35" x2="19" y2="54" class="lb"/></g>' +
+    '<line x1="40" y1="32" x2="41" y2="54" class="lb"/>' +
+    '<g class="mv-swing-n og-rt"><line x1="43" y1="31" x2="57" y2="26" class="lb"/></g>' +
+    '<g class="mv-swing og-lt"><line x1="16" y1="36" x2="3" y2="28" class="lb"/></g>',
+
+  // ローイング。座って足裏にチューブ、へそへ引く
+  row: FIG.floor + HI(33, 30, 6, 5) +
+    '<line x1="8" y1="53" x2="30" y2="53" class="lb"/><path d="M8 53 l-1 -7" class="foot"/>' +
+    '<line x1="30" y1="53" x2="33" y2="26" class="bd"/><circle cx="34" cy="20" r="5" class="hd"/>' +
+    '<g class="gh"><line x1="32" y1="33" x2="14" y2="45" class="lb"/></g>' +
+    '<g class="mv-slide"><line x1="32" y1="33" x2="20" y2="33" class="lb"/></g>' +
+    '<path d="M7 50 q7 -9 13 -16" class="band"/>' + A1(18, 19, 32, 19),
+
+  // プルアパート。胸の高さで左右に開く
+  pullapart: FIG.floor + FIG.front + HI(32, 22, 9, 4) +
+    '<g class="gh"><line x1="32" y1="22" x2="22" y2="20" class="lb"/><line x1="32" y1="22" x2="42" y2="20" class="lb"/></g>' +
+    '<g class="mv-spread og-c"><line x1="32" y1="22" x2="13" y2="19" class="lb"/>' +
+    '<line x1="32" y1="22" x2="51" y2="19" class="lb"/>' +
+    '<line x1="13" y1="19" x2="51" y2="19" class="band"/></g>' +
+    A1(14, 33, 6, 33) + A1(50, 33, 58, 33),
+
+  // スーパーマン。うつ伏せで手足を浮かせる。薄い図が床についたところ
+  superman: FIG.floor + HI(30, 44, 9, 4) +
+    '<g class="gh"><line x1="16" y1="52" x2="44" y2="52" class="bd"/>' +
+    '<line x1="44" y1="52" x2="56" y2="52" class="lb"/><line x1="16" y1="52" x2="4" y2="52" class="lb"/></g>' +
+    '<g class="mv-lift og-c"><circle cx="48" cy="40" r="4.8" class="hd"/>' +
+    '<line x1="16" y1="46" x2="44" y2="42" class="bd"/>' +
+    '<line x1="44" y1="42" x2="56" y2="34" class="lb"/><line x1="16" y1="46" x2="4" y2="38" class="lb"/></g>' +
+    A1(30, 56, 30, 46),
+
+  // デッドリフト。薄い図が前傾、濃い図が起きたところ
+  hinge: FIG.floor + HI(26, 36, 5, 6) +
+    '<line x1="30" y1="38" x2="25" y2="56" class="lb"/><line x1="30" y1="38" x2="36" y2="56" class="lb"/>' +
+    '<g class="mv-hinge og-lb"><line x1="30" y1="38" x2="30" y2="16" class="bd"/>' +
+    '<circle cx="30" cy="11" r="5" class="hd"/>' +
+    '<line x1="30" y1="26" x2="36" y2="30" class="lb"/><line x1="36" y1="30" x2="35" y2="53" class="band"/></g>' +
+    '<path d="M44 20 q8 10 2 20" class="ar"/><path d="M49 38 L46 44 L43 37Z" class="ah"/>',
+
+  // スクワット。薄い図が立ったところ、濃い図がしゃがんだところ
+  squat: FIG.floor + HI(23, 44, 5, 6) + HI(41, 44, 5, 6) +
+    '<g class="gh"><circle cx="32" cy="8" r="5" class="hd"/><line x1="32" y1="13" x2="32" y2="34" class="bd"/>' +
+    '<line x1="32" y1="34" x2="27" y2="56" class="lb"/><line x1="32" y1="34" x2="37" y2="56" class="lb"/></g>' +
+    '<g class="mv-squat"><circle cx="32" cy="18" r="5" class="hd"/>' +
+    '<line x1="32" y1="23" x2="32" y2="38" class="bd"/><line x1="32" y1="26" x2="47" y2="28" class="lb"/></g>' +
+    '<line x1="32" y1="38" x2="20" y2="46" class="lb"/><line x1="20" y1="46" x2="21" y2="56" class="lb"/>' +
+    '<line x1="32" y1="38" x2="44" y2="46" class="lb"/><line x1="44" y1="46" x2="43" y2="56" class="lb"/>' +
+    A2(56, 18, 56, 40),
+
+  // スプリットスクワット。前後に開いて上下
+  lunge: FIG.floor + HI(42, 46, 5, 5) +
+    '<g class="mv-bob"><circle cx="32" cy="12" r="5" class="hd"/>' +
+    '<line x1="32" y1="17" x2="32" y2="35" class="bd"/>' +
+    '<line x1="32" y1="22" x2="23" y2="30" class="lb"/><line x1="32" y1="22" x2="41" y2="30" class="lb"/></g>' +
+    '<line x1="32" y1="35" x2="17" y2="44" class="lb"/><line x1="17" y1="44" x2="17" y2="56" class="lb"/>' +
+    '<line x1="32" y1="35" x2="46" y2="46" class="lb"/><line x1="46" y1="46" x2="53" y2="56" class="lb"/>' +
+    A2(58, 24, 58, 38),
+
+  // ヒップリフト。薄い図が腰を下ろしたところ
+  bridge: FIG.floor + HI(31, 42, 7, 4) +
+    '<circle cx="9" cy="48" r="4.8" class="hd"/><line x1="14" y1="50" x2="24" y2="50" class="bd"/>' +
+    '<g class="gh"><line x1="24" y1="50" x2="38" y2="50" class="bd"/></g>' +
+    '<g class="mv-bobup"><line x1="24" y1="50" x2="38" y2="38" class="bd"/>' +
+    '<line x1="38" y1="38" x2="41" y2="56" class="lb"/></g>' + A1(50, 50, 50, 34),
+
+  // カーフレイズ。薄い図がかかとをつけたところ
+  calf: FIG.floor + HI(27, 50, 4, 5) + HI(39, 50, 4, 5) +
+    '<g class="gh"><circle cx="32" cy="14" r="5" class="hd"/><line x1="32" y1="19" x2="32" y2="37" class="bd"/>' +
+    '<line x1="32" y1="37" x2="27" y2="56" class="lb"/><line x1="32" y1="37" x2="38" y2="56" class="lb"/></g>' +
+    '<g class="mv-calf">' + FIG.front + '</g>' +
+    '<path d="M25 56 l0 -4" class="foot"/><path d="M39 56 l0 -4" class="foot"/>' +
+    A2(52, 36, 52, 50),
+
+  // タオルギャザー。椅子に座り、足指でタオルをたぐり寄せる
+  towel: FIG.floor + HI(38, 48, 8, 4) +
+    '<line x1="42" y1="22" x2="42" y2="38" class="lb"/>' +
+    '<path d="M42 38 q0 9 -7 11 l-9 2" class="sole" stroke-width="5"/>' +
+    '<g class="mv-spread og-rt"><path d="M27 52 q-4 1 -6 4" class="toe"/>' +
+    '<path d="M28 55 q-5 0 -8 2" class="toe"/></g>' +
+    '<path d="M3 56 q4 -5 8 0 q4 5 8 0" class="band"/>' + A1(16, 45, 6, 45),
+
+  // 足指グーチョキパー。足の甲を横から見て、指を開く
+  toes: HI(32, 24, 11, 7) +
+    '<path d="M22 50 q-3 -14 2 -22 q3 -5 8 -5 q5 0 8 5 q5 8 2 22 Z" class="sole"/>' +
+    '<g class="mv-spread og-c"><line x1="25" y1="22" x2="21" y2="13" class="toe"/>' +
+    '<line x1="29" y1="20" x2="27" y2="10" class="toe"/><line x1="33" y1="20" x2="34" y2="10" class="toe"/>' +
+    '<line x1="37" y1="21" x2="40" y2="12" class="toe"/><line x1="40" y1="24" x2="45" y2="17" class="toe"/></g>' +
+    A2(12, 18, 6, 30) + A2(52, 18, 58, 30),
+
+  // 足首回し。足首を中心に回す
+  ankle: FIG.floor +
+    '<line x1="26" y1="6" x2="26" y2="28" class="bd"/>' +
+    '<line x1="26" y1="28" x2="26" y2="38" class="lb"/>' +
+    '<g class="mv-spin og-lt"><path d="M26 38 l11 5" class="foot"/></g>' +
+    '<path d="M40 30 a13 13 0 1 1 -13 -4" class="ar"/>' +
+    '<path d="M22 20 L30 24 L22 30Z" class="ah"/>',
 };
+
 function artSVG(pattern) {
-  return `<svg class="art" viewBox="0 0 48 48" aria-hidden="true">${ART[pattern] || ART.push}</svg>`;
+  return `<svg class="art" viewBox="0 0 64 64" aria-hidden="true">${ART[pattern] || ART.push}</svg>`;
 }
 
 /* ---------- メニュー（セットメニューは複数から選べる） ---------- */
