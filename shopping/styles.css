@@ -1,0 +1,117 @@
+:root {
+  --bg: #f4f2ed;
+  --card: #ffffff;
+  --ink: #22302a;
+  --sub: #6b7672;
+  --line: #ddd8cf;
+  --accent: #1e6b4f;
+  --accent-ink: #ffffff;
+  --danger: #b3352b;
+  --danger-bg: #fbeae8;
+  --ok: #1e6b4f;
+  --ok-bg: #e4f0ea;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+.app-header { padding: 20px 16px 4px; max-width: 640px; margin: 0 auto; }
+.app-header h1 { font-size: 24px; margin: 0; letter-spacing: .02em; }
+.head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.head-actions { display: flex; gap: 2px; }
+.back { display: inline-block; color: var(--sub); font-size: 13px; text-decoration: none; margin-bottom: 10px; }
+.subtitle { color: var(--sub); font-size: 13px; margin: 4px 0 0; }
+main { padding: 16px; max-width: 640px; margin: 0 auto; }
+
+.view { display: none; }
+.view.active { display: block; }
+
+/* タブ */
+.tabs { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tabs button {
+  flex: 1 0 auto; padding: 10px 12px; font-size: 13px; white-space: nowrap;
+  background: var(--card); color: var(--sub);
+  border: 1px solid var(--line); border-radius: 10px; cursor: pointer;
+}
+.tabs button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+.tabs .n { font-variant-numeric: tabular-nums; margin-left: 4px; opacity: .85; }
+
+/* カード */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.card h2 { font-size: 13px; color: var(--sub); margin: 0 0 14px; font-weight: 700; }
+.card.warn { border-left: 3px solid var(--danger); }
+.name { font-size: 16px; font-weight: 700; line-height: 1.5; }
+.badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.badge {
+  font-size: 11px; border: 1px solid var(--line); border-radius: 5px;
+  padding: 1px 6px; color: var(--sub);
+}
+.badge.ng { color: var(--danger); border-color: var(--danger); }
+.meta { font-size: 12px; color: var(--sub); line-height: 1.8; margin-top: 8px; }
+.raw {
+  font-size: 12px; color: var(--sub); line-height: 1.6; margin-top: 8px;
+  padding: 8px 10px; background: var(--bg); border-radius: 8px;
+}
+.sub { font-size: 12px; margin-top: 8px; }
+.sub.on { color: var(--ok); }
+.sub.warn { color: var(--danger); }
+.price { font-size: 13px; margin-top: 10px; line-height: 1.7; }
+.price .lo { font-weight: 700; }
+.price .at { color: var(--sub); font-size: 11px; }
+.links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.links a {
+  font-size: 12px; color: var(--accent); text-decoration: none;
+  border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px;
+}
+.acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.acts button {
+  flex: 1 0 auto; padding: 11px 12px; font-size: 13px; font-weight: 700;
+  background: var(--card); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 10px; cursor: pointer;
+}
+.acts button.go { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.acts button:disabled { opacity: .5; }
+.empty { color: var(--sub); font-size: 13px; text-align: center; padding: 36px 0; }
+
+/* ボタン・入力 */
+button { font-family: inherit; }
+.primary {
+  width: 100%; padding: 16px; font-size: 16px; font-weight: 700;
+  border: 0; border-radius: 12px; background: var(--accent); color: var(--accent-ink);
+  cursor: pointer; -webkit-appearance: none;
+}
+.secondary {
+  padding: 13px 18px; font-size: 14px; font-weight: 700;
+  background: var(--card); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 12px; cursor: pointer;
+}
+.secondary.wide { width: 100%; }
+.icon-btn {
+  background: none; border: 0; font-size: 22px; line-height: 1;
+  padding: 4px 6px; cursor: pointer; color: var(--sub);
+}
+.row { display: flex; gap: 10px; margin-top: 16px; }
+.row > * { flex: 1; }
+label { display: block; font-size: 12px; color: var(--sub); margin: 14px 0 6px; }
+input {
+  width: 100%; padding: 12px; font-size: 16px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg); color: var(--ink);
+}
+code { font-size: 12px; background: var(--bg); padding: 1px 4px; border-radius: 4px; }
+
+.cap { color: var(--sub); font-size: 12px; line-height: 1.7; margin: 0; }
+.msg { padding: 12px; border-radius: 10px; font-size: 14px; margin-bottom: 12px; line-height: 1.6; }
+.msg.ok { background: var(--ok-bg); color: var(--ok); }
+.msg.ng { background: var(--danger-bg); color: var(--danger); }
+.hint { font-size: 12px; color: var(--sub); line-height: 1.7; margin-top: 14px; text-align: center; }

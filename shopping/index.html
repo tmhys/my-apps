@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>買い物メモ</title>
+<meta name="theme-color" content="#f4f2ed">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="買い物メモ">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<header class="app-header">
+  <a class="back" href="../">← ツール一覧に戻る</a>
+  <div class="head-row">
+    <h1>買い物メモ</h1>
+    <div class="head-actions">
+      <button id="refresh" class="icon-btn" type="button" aria-label="更新">↻</button>
+      <button id="open-settings" class="icon-btn" type="button" aria-label="設定">⚙</button>
+    </div>
+  </div>
+  <p class="subtitle">LINE で来た「買っといて」と欲しいもの</p>
+</header>
+
+<main>
+  <section id="view-home" class="view active">
+    <div id="msg" class="msg" hidden></div>
+
+    <div class="tabs" id="tabs">
+      <button data-tab="waiting" type="button">発注待ち<span class="n"></span></button>
+      <button data-tab="unconfirmed" type="button">未確認<span class="n"></span></button>
+      <button data-tab="wishlist" type="button">欲しいもの<span class="n"></span></button>
+      <button data-tab="ordered" type="button">発注済<span class="n"></span></button>
+    </div>
+
+    <div id="list"></div>
+    <p class="hint" id="foot"></p>
+  </section>
+
+  <section id="view-settings" class="view">
+    <div class="card">
+      <h2>接続先</h2>
+      <p class="cap">
+        gas/household-ordering のウェブアプリURLと合言葉（<code>WEBAPP_TOKEN</code>）。
+        LINE の webhook とは入口も合言葉も別です。
+      </p>
+      <label>WebApp URL</label>
+      <input id="set-url" type="url" inputmode="url" autocomplete="off"
+             placeholder="https://script.google.com/macros/s/.../exec">
+      <label>トークン（WEBAPP_TOKEN）</label>
+      <input id="set-token" type="text" autocomplete="off" placeholder="長いランダム文字列">
+      <div class="row">
+        <button id="test-conn" class="secondary" type="button">接続テスト</button>
+        <button id="save-settings" class="primary" type="button">設定を保存</button>
+      </div>
+      <div id="set-msg" class="msg" hidden></div>
+      <p class="hint">
+        この2つは端末のブラウザ内（localStorage）にだけ保存され、
+        このリポジトリにもどこにも送信されません。
+      </p>
+    </div>
+    <div class="card">
+      <button id="close-settings" class="secondary wide" type="button">閉じる</button>
+    </div>
+  </section>
+</main>
+
+<script src="./app.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('../sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>

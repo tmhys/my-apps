@@ -13,7 +13,7 @@
  *   だったので、クエリ違いの応答を取り違える（先月の金額が出る）恐れがあった。
  *   自分のオリジン以外は触らない。
  */
-const CACHE = 'my-apps-v2';
+const CACHE = 'my-apps-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -30,6 +30,10 @@ const ASSETS = [
   './reimburse/index.html',
   './reimburse/styles.css',
   './reimburse/app.js',
+  './shopping/',
+  './shopping/index.html',
+  './shopping/styles.css',
+  './shopping/app.js',
 ];
 
 self.addEventListener('install', e => {
