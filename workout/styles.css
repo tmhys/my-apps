@@ -114,3 +114,53 @@ button.danger { color: var(--danger); border-color: var(--danger); margin-top: 1
 .tabbar button.active { color: var(--accent); font-weight: 700; }
 
 .back { display: inline-block; font-size: 13px; color: var(--accent); text-decoration: none; margin-bottom: 6px; }
+
+/* 種目イラスト（小さなアニメーション付きピクトグラム） */
+.ex-art { flex: none; width: 46px; height: 46px; display: inline-flex; }
+.ex-art .art { width: 46px; height: 46px; }
+.art line, .art circle, .art path {
+  stroke: #55605a; stroke-width: 2.4; fill: none;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.art circle { fill: #e9e4d8; }
+.art .fl { stroke: #c9c2b2; stroke-width: 2; }
+.art .band { stroke: var(--accent); stroke-dasharray: 3 2; }
+.art g { transform-box: fill-box; }
+.og-c { transform-origin: center; }
+.og-lt { transform-origin: left top; }
+.og-rt { transform-origin: right top; }
+.og-lb { transform-origin: left bottom; }
+.mv-bob { animation: kf-bob 1.6s ease-in-out infinite; }
+.mv-bobup { animation: kf-bobup 1.6s ease-in-out infinite; }
+.mv-slide { animation: kf-slide 1.6s ease-in-out infinite; }
+.mv-swing { animation: kf-swing 1.6s ease-in-out infinite; }
+.mv-swing-n { animation: kf-swing-n 1.6s ease-in-out infinite; }
+.mv-swing-s { animation: kf-swing-s 1.6s ease-in-out infinite; }
+.mv-spread { animation: kf-spread 1.6s ease-in-out infinite; }
+.mv-spin { animation: kf-swing 2.4s ease-in-out infinite; }
+.mv-lift { animation: kf-lift 1.8s ease-in-out infinite; }
+.mv-hinge { animation: kf-hinge 1.8s ease-in-out infinite; }
+.mv-squat { animation: kf-bob 1.8s ease-in-out infinite; }
+.mv-calf { animation: kf-bobup 1.4s ease-in-out infinite; }
+@keyframes kf-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(2.6px); } }
+@keyframes kf-bobup { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2.6px); } }
+@keyframes kf-slide { 0%,100% { transform: translateX(0); } 50% { transform: translateX(3px); } }
+@keyframes kf-swing { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(16deg); } }
+@keyframes kf-swing-n { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-16deg); } }
+@keyframes kf-swing-s { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(9deg); } }
+@keyframes kf-spread { 0%,100% { transform: scaleX(1); } 50% { transform: scaleX(1.14); } }
+@keyframes kf-lift { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-5deg); } }
+@keyframes kf-hinge { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(17deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .art g { animation: none; }
+}
+.exercise-list li { align-items: center; }
+.ex-main { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ex-name { font-weight: 600; }
+.ex-desc { font-size: 12px; color: var(--sub); line-height: 1.5; }
+.ex-block .ex-desc { font-size: 12px; color: var(--sub); line-height: 1.5; margin-top: 2px; }
+.ex-head { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; }
+.ex-head h3 { margin: 0 0 2px; }
+.menu-note { font-size: 12px; color: var(--danger); margin: 0 0 6px; min-height: 1em; }
+.menu-row { margin-top: 8px; }
+.menu-row button { font-size: 13px; padding: 9px 10px; }

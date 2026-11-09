@@ -18,7 +18,7 @@
 <header class="app-header">
   <a class="back" href="../">← ツール一覧に戻る</a>
   <h1>ワークアウトログ</h1>
-  <p class="subtitle">胸・腹・腕 / 週3回・30分 / 脚の種目なし</p>
+  <p class="subtitle">胸・腹・腕が中心 / たまに背中・脚・フットケア / 週3回・30分</p>
 </header>
 
 <main>
@@ -30,8 +30,16 @@
         <span id="week-count" class="badge"></span>
       </div>
       <p id="next-template" class="template-name"></p>
+      <p id="next-note" class="menu-note"></p>
       <ul id="next-exercises" class="exercise-list"></ul>
       <button id="btn-start" class="primary">この内容で記録する</button>
+      <div class="row menu-row">
+        <button id="btn-other-menu" type="button">別のセットメニューにする</button>
+      </div>
+      <div class="row menu-row">
+        <button id="btn-open-back" type="button">背中の日（D）</button>
+        <button id="btn-open-legs" type="button">脚＋足の日（E）</button>
+      </div>
     </div>
     <div class="card">
       <h2>直近の記録</h2>
@@ -46,13 +54,8 @@
       <label class="field">日付
         <input type="date" id="f-date">
       </label>
-      <label class="field">テンプレート
-        <select id="f-template">
-          <option value="A">A（胸＋三頭）</option>
-          <option value="B">B（腕＋肩）</option>
-          <option value="C">C（胸＋腹）</option>
-          <option value="free">自由</option>
-        </select>
+      <label class="field">メニュー
+        <select id="f-template"></select>
       </label>
       <div id="editor-exercises"></div>
       <label class="field">種目を追加
