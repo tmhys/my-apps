@@ -14,10 +14,15 @@
 
 (function () {
   // kakeibo-pwa の android/ は TWA ではなく素の WebView アプリで、
-  // AndroidManifest に https を受け取る intent-filter が無い。
-  // そのため https のリンクではアプリが起動せず Chrome が開いてしまう。
-  // Android のときだけ intent:// にして、インストール済みのアプリを直接起動する。
+  // https を受け取る intent-filter が無い。そのため https のリンクでは
+  // アプリが起動せず Chrome が開いてしまう。
+  //
+  // MAIN / LAUNCHER を指す intent:// でも起動しなかった。Chrome は intent://
+  // を発射するとき BROWSABLE カテゴリを必ず足し、Android は付いた全カテゴリを
+  // 宣言しているアクティビティしか起動しないため。アプリ側に
+  // VIEW + DEFAULT + BROWSABLE で kakeibo:// を受ける口を足して、そこを叩く。
   const PACKAGE = 'com.tmhys.kakeibo';
+  const SCHEME = 'kakeibo';
 
   const card = document.getElementById('kakeibo-card');
   if (!card) return;
@@ -25,13 +30,13 @@
 
   const web = card.getAttribute('href');
 
-  // アプリが入っていない端末では browser_fallback_url でウェブ版に落ちる。
+  // 受け口が無い古い APK や、アプリが入っていない端末では
+  // browser_fallback_url でウェブ版に落ちる。
   // データは端末ごとなので、どちらで開いても設定し直しにはならない。
   card.setAttribute(
     'href',
-    'intent://#Intent;package=' + PACKAGE +
-      ';action=android.intent.action.MAIN' +
-      ';category=android.intent.category.LAUNCHER' +
+    'intent://open#Intent;scheme=' + SCHEME +
+      ';package=' + PACKAGE +
       ';S.browser_fallback_url=' + encodeURIComponent(web) +
       ';end'
   );

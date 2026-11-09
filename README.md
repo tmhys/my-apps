@@ -22,7 +22,7 @@
 | アプリ | リポジトリ | リンク先の持ち方 |
 |---|---|---|
 | 習慣グリッド | [tmhys/habit-pwa](https://github.com/tmhys/habit-pwa) | `index.html` に直書き（ウェブ版） |
-| らくな家計簿 | [tmhys/kakeibo-pwa](https://github.com/tmhys/kakeibo-pwa) | Android では **`intent://`**（`portal.js`）、それ以外はウェブ版 |
+| らくな家計簿 | [tmhys/kakeibo-pwa](https://github.com/tmhys/kakeibo-pwa) | Android では **`kakeibo://`**（`portal.js`）、それ以外はウェブ版 |
 | Claude Inbox | [tmhys/my_apps](https://github.com/tmhys/my_apps) の `apps/claude-inbox` | **端末の localStorage**（`portal.js`） |
 
 前の2つは GitHub Pages のプロジェクトページ（`https://tmhys.github.io/<repo>/`）で、
@@ -32,8 +32,15 @@
 `kakeibo-pwa` の `android/` は TWA ではなく素の WebView アプリで、`AndroidManifest` に
 https を受け取る intent-filter が無い。そのため https のリンクではアプリが起動せず
 Chrome が開いてしまう。Android のときだけ `portal.js` が
-`intent://#Intent;package=com.tmhys.kakeibo;…;end` に差し替える。
-アプリが入っていない端末は `browser_fallback_url` でウェブ版に落ち、
+`intent://open#Intent;scheme=kakeibo;package=com.tmhys.kakeibo;…;end` に差し替える。
+
+**`MAIN` / `LAUNCHER` を指す `intent://` では起動しなかった。** Chrome は `intent://`
+を発射するとき `BROWSABLE` カテゴリを必ず足し、Android は付いた全カテゴリを宣言して
+いるアクティビティしか起動しないため。アプリ側に `VIEW` + `DEFAULT` + `BROWSABLE` で
+`kakeibo://` を受ける intent-filter を足してある（`kakeibo-pwa` の `android/README.md`）。
+**受け口のある APK（2026-11 以降のビルド）が要る。**
+
+アプリが入っていない端末や古い APK は `browser_fallback_url` でウェブ版に落ち、
 PC・iOS では差し替えずウェブ版のままにする。
 
 **Claude Inbox だけ扱いが違う。** 本体は Cloudflare Workers で、ワーカーのホスト名は
