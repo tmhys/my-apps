@@ -10,7 +10,7 @@
 
 | モジュール | 場所 | データの持ち方 | 内容 |
 |---|---|---|---|
-| ワークアウトログ | `workout/` | 端末内のみ | 自宅筋トレの記録。A/B/Cローテーション＋背中・脚・フットケア、進行ルール、脚の疲労感の記録 |
+| ワークアウトログ | `workout/` | 端末内のみ（Android アプリ版あり → `android/`） | 自宅筋トレの記録。A/B/Cローテーション＋背中・脚・フットケア、進行ルール、脚の疲労感の記録 |
 | 立替精算 | `reimburse/` | 接続先のGAS | 妻が立て替えた分の未精算と送金額。送金したら精算済みにする。バックエンドは [tmhys/gas](https://github.com/tmhys/gas) の `receipt-reimbursement` |
 | 買い物メモ | `shopping/` | 接続先のGAS | LINE で来た「買っといて」と欲しいもの。発注待ち／未確認／欲しいもの／発注済の4タブ。バックエンドは [tmhys/gas](https://github.com/tmhys/gas) の `household-ordering` |
 
@@ -71,6 +71,19 @@ PC・iOS では差し替えずウェブ版のままにする。
 3. ルートの `sw.js` のキャッシュ対象にモジュールのファイルを追加し、`CACHE` の版を上げる
    （**版を上げ忘れると古いファイルが端末に残る**）
 4. 上のモジュール表に「データの持ち方」を書く
+
+## Android アプリ版（`android/`）
+
+ワークアウトログだけ、WebView の Android アプリにしてある（`kakeibo-pwa` と同じ作り）。
+中身は GitHub Pages の `workout/` をそのまま表示するので、**画面を直すときに
+APK を作り直す必要はない**。APK を作り直すのは `android/` を変えたときだけ。
+
+**記録はブラウザ（PWA）とアプリで別の場所に入る。** WebView の localStorage は
+ブラウザのものと共有されない。移すときは、ブラウザ側で「JSONで書き出す」→
+アプリ側で「JSONを読み込む」。どちらか一方に寄せること。
+
+JSON の書き出しは、アプリの中では `window.WorkoutApp.saveFile` に渡す
+（WebView では `a[download]` が効かないため）。詳しくは `android/README.md`。
 
 ## Service Worker について
 

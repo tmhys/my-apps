@@ -1,49 +1,49 @@
 'use strict';
-/* ポータルの小さな仕掛け。別アプリのカードで、静的な href だけでは足りないものを扱う。
+/* ポータルの小さな仕掛け。カードのリンクが静的な href だけでは足りないものを扱う。
 
-   1. らくな家計簿 … Android アプリ（WebView）なので、Android では intent:// に
-      差し替えて、ウェブ版ではなくアプリを起動する。
+   1. ワークアウトログ と らくな家計簿 … Android アプリ（WebView）があるので、
+      Android では intent:// に差し替えて、ウェブ版ではなくアプリを起動する。
    2. Claude Inbox … URL を公開リポジトリに書きたくないので、端末の localStorage に
       置く。ワーカーのホスト名は設計上どこにも公開していない。
 
    習慣グリッドは tmhys.github.io 配下のウェブ版をそのまま開くので、ここでは触らない。 */
 
 // ---------------------------------------------------------------------------
-// らくな家計簿は Android アプリ（WebView）
+// Android アプリがあるものは、Android ではアプリを起動する
 // ---------------------------------------------------------------------------
 
-(function () {
-  // kakeibo-pwa の android/ は TWA ではなく素の WebView アプリで、
-  // https を受け取る intent-filter が無い。そのため https のリンクでは
-  // アプリが起動せず Chrome が開いてしまう。
-  //
-  // MAIN / LAUNCHER を指す intent:// でも起動しなかった。Chrome は intent://
-  // を発射するとき BROWSABLE カテゴリを必ず足し、Android は付いた全カテゴリを
-  // 宣言しているアクティビティしか起動しないため。アプリ側に
-  // VIEW + DEFAULT + BROWSABLE で kakeibo:// を受ける口を足して、そこを叩く。
-  const PACKAGE = 'com.tmhys.kakeibo';
-  const SCHEME = 'kakeibo';
-
-  const card = document.getElementById('kakeibo-card');
+/**
+ * カードのリンクを intent:// に差し替える。
+ *
+ * どちらのアプリも TWA ではなく素の WebView アプリで、https を受け取る
+ * intent-filter を持たない。そのため https のリンクではアプリが起動せず
+ * Chrome が開いてしまう。独自スキームを受ける口をアプリ側に足してあるので、
+ * そこを叩く（詳しくは各アプリの android/README.md）。
+ *
+ * アプリが入っていない端末や古い APK は browser_fallback_url でウェブ版に落ちる。
+ */
+function useAndroidApp(cardId, pkg, scheme, mark) {
+  const card = document.getElementById(cardId);
   if (!card) return;
   if (!/Android/i.test(navigator.userAgent)) return; // PC・iOS はウェブ版のまま
 
-  const web = card.getAttribute('href');
-
-  // 受け口が無い古い APK や、アプリが入っていない端末では
-  // browser_fallback_url でウェブ版に落ちる。
-  // データは端末ごとなので、どちらで開いても設定し直しにはならない。
+  const web = new URL(card.getAttribute('href'), location.href).toString();
   card.setAttribute(
     'href',
-    'intent://open#Intent;scheme=' + SCHEME +
-      ';package=' + PACKAGE +
+    'intent://open#Intent;scheme=' + scheme +
+      ';package=' + pkg +
       ';S.browser_fallback_url=' + encodeURIComponent(web) +
       ';end'
   );
+  const el = card.querySelector('.ext-mark');
+  if (el) el.textContent = mark;
+}
 
-  const mark = card.querySelector('.ext-mark');
-  if (mark) mark.textContent = 'アプリ';
-})();
+// ワークアウトログ（筋トレログ）。ポータルの中のモジュールだが、アプリ版もある。
+useAndroidApp('workout-card', 'com.tmhys.workout', 'workout', '');
+
+// らくな家計簿。
+useAndroidApp('kakeibo-card', 'com.tmhys.kakeibo', 'kakeibo', 'アプリ');
 
 // ---------------------------------------------------------------------------
 // Claude Inbox は URL を端末に置く

@@ -896,10 +896,20 @@ document.getElementById('btn-save-settings').addEventListener('click', () => {
   alert('設定を保存しました');
 });
 document.getElementById('btn-export').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const name = `workout-log-backup-${todayStr()}.json`;
+  const text = JSON.stringify(state, null, 2);
+
+  // Android アプリ（WebView）の中では a[download] が効かず、何も起きない。
+  // アプリが橋渡し（window.WorkoutApp.saveFile）を出しているならそちらに渡す。
+  if (window.WorkoutApp && typeof window.WorkoutApp.saveFile === 'function') {
+    window.WorkoutApp.saveFile(name, text);
+    return;
+  }
+
+  const blob = new Blob([text], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `workout-log-backup-${todayStr()}.json`;
+  a.download = name;
   a.click();
   URL.revokeObjectURL(a.href);
 });
