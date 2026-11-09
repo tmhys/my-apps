@@ -57,6 +57,13 @@
       <div class="tool-name">らくな家計簿 <span class="ext-mark">↗</span></div>
       <div class="tool-desc">家計の支出・履歴・分析。楽天家計簿（gas）がバックエンド。</div>
     </a>
+    <!-- URL は端末の localStorage に置く（portal.js）。公開リポジトリに書かない -->
+    <a class="tool-card external unset" id="inbox-card">
+      <div class="tool-emoji">📥</div>
+      <div class="tool-name">Claude Inbox</div>
+      <div class="tool-desc">読み込み中…</div>
+      <button class="card-set" id="inbox-set" type="button">設定する</button>
+    </a>
   </div>
 
   <p class="hint">
@@ -66,6 +73,7 @@
   </p>
 </main>
 
+<script src="./portal.js"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

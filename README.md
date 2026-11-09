@@ -19,13 +19,23 @@
 ホーム画面に置くのはこのポータル1つで済むように、外にある自分のアプリへのリンクも
 トップに並べている。コードは各リポジトリのままで、ここでは何も持たない。
 
-| アプリ | リポジトリ |
-|---|---|
-| 習慣グリッド | [tmhys/habit-pwa](https://github.com/tmhys/habit-pwa) |
-| らくな家計簿 | [tmhys/kakeibo-pwa](https://github.com/tmhys/kakeibo-pwa) |
+| アプリ | リポジトリ | リンク先の持ち方 |
+|---|---|---|
+| 習慣グリッド | [tmhys/habit-pwa](https://github.com/tmhys/habit-pwa) | `index.html` に直書き |
+| らくな家計簿 | [tmhys/kakeibo-pwa](https://github.com/tmhys/kakeibo-pwa) | `index.html` に直書き |
+| Claude Inbox | [tmhys/my_apps](https://github.com/tmhys/my_apps) の `apps/claude-inbox` | **端末の localStorage**（`portal.js`） |
 
-リンク先は GitHub Pages のプロジェクトページ（`https://tmhys.github.io/<repo>/`）。
-公開先を変えたらルートの `index.html` を直す。
+前の2つは GitHub Pages のプロジェクトページ（`https://tmhys.github.io/<repo>/`）で、
+もともと公開されているので直書きしている。公開先を変えたらルートの `index.html` を直す。
+
+**Claude Inbox だけ扱いが違う。** 本体は Cloudflare Workers で、ワーカーのホスト名は
+どこにも公開していない。ここは公開リポジトリなので書かず、端末ごとにカードの
+「設定する」から URL を入れる（`portal.js` が `portal:inboxUrl` に保存する）。
+未設定の端末ではカードが「設定する」の表示になり、押しても開かない。
+
+合言葉（`APP_TOKEN`）は Claude Inbox の画面側で入れるので、ここには保存しない。
+`#t=...` 付きのURLを貼られても、保存時にハッシュを落とす。
+`href` には `https:` のURLしか入れない（`javascript:` を弾くため）。
 
 ## モジュールの共通ルール
 
@@ -44,6 +54,7 @@
 1. リポジトリ直下にフォルダを作り、`index.html` 等を置く
 2. ルートの `index.html` にカードを追加する
 3. ルートの `sw.js` のキャッシュ対象にモジュールのファイルを追加し、`CACHE` の版を上げる
+   （**版を上げ忘れると古いファイルが端末に残る**）
 4. 上のモジュール表に「データの持ち方」を書く
 
 ## Service Worker について

@@ -13,11 +13,12 @@
  *   だったので、クエリ違いの応答を取り違える（先月の金額が出る）恐れがあった。
  *   自分のオリジン以外は触らない。
  */
-const CACHE = 'my-apps-v3';
+const CACHE = 'my-apps-v4';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
+  './portal.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',

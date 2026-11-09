@@ -38,3 +38,11 @@ h2.section { font-size: 13px; color: var(--sub); margin: 26px 0 6px; }
 .cap { font-size: 12px; color: var(--sub); line-height: 1.7; margin: 0 0 12px; }
 .tool-card.external { background: transparent; border-style: dashed; }
 .ext-mark { color: var(--sub); font-weight: 400; font-size: 12px; }
+
+/* 接続先が未設定のカードと、その設定ボタン */
+.tool-card.unset { opacity: .75; }
+.card-set {
+  margin-top: 10px; padding: 7px 12px; font-size: 12px; font-family: inherit;
+  background: var(--bg); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 8px; cursor: pointer;
+}
