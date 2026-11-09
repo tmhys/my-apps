@@ -1,0 +1,127 @@
+:root {
+  --bg: #f4f2ed;
+  --card: #ffffff;
+  --ink: #22302a;
+  --sub: #6b7672;
+  --line: #ddd8cf;
+  --accent: #1e6b4f;
+  --accent-ink: #ffffff;
+  --danger: #b3352b;
+  --danger-bg: #fbeae8;
+  --ok: #1e6b4f;
+  --ok-bg: #e4f0ea;
+  --bar: #cfe0d7;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+.app-header { padding: 20px 16px 4px; max-width: 640px; margin: 0 auto; }
+.app-header h1 { font-size: 24px; margin: 0; letter-spacing: .02em; }
+.head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.back { display: inline-block; color: var(--sub); font-size: 13px; text-decoration: none; margin-bottom: 10px; }
+.subtitle { color: var(--sub); font-size: 13px; margin: 4px 0 0; }
+main { padding: 16px; max-width: 640px; margin: 0 auto; }
+
+.view { display: none; }
+.view.active { display: block; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px 16px;
+  margin-bottom: 12px;
+}
+.card h2 { font-size: 13px; color: var(--sub); margin: 0 0 14px; font-weight: 700; }
+
+/* 月送り */
+.nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.nav-btn {
+  min-width: 56px; padding: 9px 0; font-size: 17px;
+  background: var(--card); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 10px; cursor: pointer;
+}
+.nav-btn:disabled { opacity: .35; }
+.nav-cur { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* 金額 */
+.cap { color: var(--sub); font-size: 12px; line-height: 1.7; }
+.hero {
+  font-size: 40px; font-weight: 700; letter-spacing: -.02em;
+  margin: 2px 0 6px; font-variant-numeric: tabular-nums;
+}
+.breakdown {
+  display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px;
+  margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line);
+}
+.breakdown .sub { color: var(--sub); }
+
+/* 要確認 */
+.card.warn { border-left: 3px solid var(--danger); }
+.warn-title { color: var(--danger); font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+.card.warn ul { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: var(--sub); }
+.card.warn li { margin-bottom: 4px; line-height: 1.6; }
+
+/* カテゴリ別 */
+.cat { margin-bottom: 12px; }
+.cat-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; margin-bottom: 5px; }
+.cat-amt { font-variant-numeric: tabular-nums; color: var(--sub); white-space: nowrap; }
+.track { height: 7px; background: var(--bar); border-radius: 4px; overflow: hidden; }
+.fill { height: 100%; background: var(--accent); border-radius: 4px; }
+
+/* 明細 */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+td { padding: 8px 0; border-top: 1px solid var(--line); vertical-align: top; }
+tr:first-child td { border-top: none; }
+td.d { color: var(--sub); white-space: nowrap; width: 46px; font-variant-numeric: tabular-nums; }
+td.a { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+td .sub { color: var(--sub); font-size: 11px; }
+.tag {
+  display: inline-block; font-size: 10px; border: 1px solid var(--line);
+  border-radius: 4px; padding: 0 4px; margin-left: 4px; color: var(--sub); vertical-align: 1px;
+}
+.tag.rv { color: var(--danger); border-color: var(--danger); }
+
+/* ボタン */
+button { font-family: inherit; }
+.primary {
+  width: 100%; padding: 16px; font-size: 16px; font-weight: 700;
+  border: 0; border-radius: 12px; background: var(--accent); color: var(--accent-ink);
+  cursor: pointer; -webkit-appearance: none;
+}
+.primary.arm { background: var(--danger); }
+.primary:disabled { opacity: .5; }
+.secondary {
+  padding: 13px 18px; font-size: 14px; font-weight: 700;
+  background: var(--card); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 12px; cursor: pointer;
+}
+.secondary.wide { width: 100%; }
+.icon-btn {
+  background: none; border: 0; font-size: 22px; line-height: 1;
+  padding: 4px 6px; cursor: pointer; color: var(--sub);
+}
+.row { display: flex; gap: 10px; margin-top: 16px; }
+.row > * { flex: 1; }
+
+/* 設定の入力欄 */
+label { display: block; font-size: 12px; color: var(--sub); margin: 14px 0 6px; }
+input {
+  width: 100%; padding: 12px; font-size: 16px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg); color: var(--ink);
+}
+code { font-size: 12px; background: var(--bg); padding: 1px 4px; border-radius: 4px; }
+
+/* メッセージ */
+.msg { padding: 12px; border-radius: 10px; font-size: 14px; margin-bottom: 12px; line-height: 1.6; }
+.msg.ok { background: var(--ok-bg); color: var(--ok); }
+.msg.ng { background: var(--danger-bg); color: var(--danger); }
+.hint { font-size: 12px; color: var(--sub); line-height: 1.7; margin-top: 14px; }
+
+@media (max-width: 420px) { .hero { font-size: 33px; } }

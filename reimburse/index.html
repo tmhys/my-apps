@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>立替精算</title>
+<meta name="theme-color" content="#f4f2ed">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="立替精算">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<header class="app-header">
+  <a class="back" href="../">← ツール一覧に戻る</a>
+  <div class="head-row">
+    <h1>立替精算</h1>
+    <button id="open-settings" class="icon-btn" type="button" aria-label="設定">⚙</button>
+  </div>
+  <p class="subtitle">妻が立て替えた分の未精算</p>
+</header>
+
+<main>
+  <!-- ホーム -->
+  <section id="view-home" class="view active">
+    <div id="msg" class="msg" hidden></div>
+
+    <div class="nav">
+      <button id="prev-month" class="nav-btn" type="button">‹</button>
+      <span id="cur-month" class="nav-cur">—</span>
+      <button id="next-month" class="nav-btn" type="button">›</button>
+    </div>
+
+    <div class="card">
+      <div class="cap" id="hero-cap">未精算</div>
+      <div class="hero" id="hero">—</div>
+      <div class="breakdown" id="breakdown"></div>
+    </div>
+
+    <div class="card warn" id="review-card" hidden>
+      <div class="warn-title" id="review-title"></div>
+      <div class="cap" id="review-note" hidden></div>
+      <ul id="review-list"></ul>
+    </div>
+
+    <div class="card" id="settle-card" hidden>
+      <div class="cap" id="settle-cap"></div>
+      <button id="settle" class="primary" type="button">精算済みにする</button>
+    </div>
+
+    <div class="card" id="category-card" hidden>
+      <h2>カテゴリ別</h2>
+      <div id="categories"></div>
+    </div>
+
+    <div class="card">
+      <h2>未精算の明細</h2>
+      <div id="items"></div>
+    </div>
+
+    <p class="hint" id="foot"></p>
+  </section>
+
+  <!-- 設定 -->
+  <section id="view-settings" class="view">
+    <div class="card">
+      <h2>接続先</h2>
+      <p class="cap">
+        gas/receipt-reimbursement のウェブアプリURLと合言葉を入れる。
+        Apps Script エディタで <code>showAppUrl()</code> を実行すると、
+        その2つが入ったURLがログに出る。
+      </p>
+      <label>WebApp URL</label>
+      <input id="set-url" type="url" inputmode="url" autocomplete="off"
+             placeholder="https://script.google.com/macros/s/.../exec">
+      <label>トークン（WEBAPP_TOKEN）</label>
+      <input id="set-token" type="text" autocomplete="off" placeholder="長いランダム文字列">
+      <div class="row">
+        <button id="test-conn" class="secondary" type="button">接続テスト</button>
+        <button id="save-settings" class="primary" type="button">設定を保存</button>
+      </div>
+      <div id="set-msg" class="msg" hidden></div>
+      <p class="hint">
+        この2つは端末のブラウザ内（localStorage）にだけ保存され、
+        このリポジトリにもどこにも送信されません。接続先の gas にだけ送られます。
+      </p>
+    </div>
+    <div class="card">
+      <button id="close-settings" class="secondary wide" type="button">閉じる</button>
+    </div>
+  </section>
+</main>
+
+<script src="./app.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('../sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>

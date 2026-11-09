@@ -27,9 +27,38 @@
       <div class="tool-name">ワークアウトログ</div>
       <div class="tool-desc">自宅筋トレ（胸・腹・腕）の記録。A/B/Cローテーション、週3回・30分。</div>
     </a>
+    <a class="tool-card" href="./reimburse/">
+      <div class="tool-emoji">🧾</div>
+      <div class="tool-name">立替精算</div>
+      <div class="tool-desc">妻が立て替えた分の未精算と送金額。送金したら精算済みにする。</div>
+    </a>
     <!-- 新しいツールはここにカードとモジュールを追加する -->
   </div>
-  <p class="hint">各ツールのデータは端末のブラウザ内に保存されます。バックアップは各ツールの設定画面からJSONで書き出してください。</p>
+
+  <h2 class="section">別アプリ</h2>
+  <p class="cap">
+    このポータルの外にある自分のアプリ。ホーム画面にはこのポータルだけ置いておけば、
+    ここから開ける。
+  </p>
+  <div class="grid">
+    <!-- GitHub Pages のプロジェクトページ。公開先を変えたらここも直す -->
+    <a class="tool-card external" href="https://tmhys.github.io/habit-pwa/">
+      <div class="tool-emoji">✅</div>
+      <div class="tool-name">習慣グリッド <span class="ext-mark">↗</span></div>
+      <div class="tool-desc">習慣の記録と可視化。Obsidian の習慣ログを一覧・詳細で見る。</div>
+    </a>
+    <a class="tool-card external" href="https://tmhys.github.io/kakeibo-pwa/">
+      <div class="tool-emoji">📊</div>
+      <div class="tool-name">らくな家計簿 <span class="ext-mark">↗</span></div>
+      <div class="tool-desc">家計の支出・履歴・分析。楽天家計簿（gas）がバックエンド。</div>
+    </a>
+  </div>
+
+  <p class="hint">
+    データの持ち方はツールごとに違います。ワークアウトログは端末のブラウザ内だけ、
+    立替精算と別アプリは接続先のサーバー（自分の Google Apps Script）から読みます。
+    詳しくは各ツールの設定画面とリポジトリの README を見てください。
+  </p>
 </main>
 
 <script>
