@@ -21,12 +21,20 @@
 
 | アプリ | リポジトリ | リンク先の持ち方 |
 |---|---|---|
-| 習慣グリッド | [tmhys/habit-pwa](https://github.com/tmhys/habit-pwa) | `index.html` に直書き |
-| らくな家計簿 | [tmhys/kakeibo-pwa](https://github.com/tmhys/kakeibo-pwa) | `index.html` に直書き |
+| 習慣グリッド | [tmhys/habit-pwa](https://github.com/tmhys/habit-pwa) | `index.html` に直書き（ウェブ版） |
+| らくな家計簿 | [tmhys/kakeibo-pwa](https://github.com/tmhys/kakeibo-pwa) | Android では **`intent://`**（`portal.js`）、それ以外はウェブ版 |
 | Claude Inbox | [tmhys/my_apps](https://github.com/tmhys/my_apps) の `apps/claude-inbox` | **端末の localStorage**（`portal.js`） |
 
 前の2つは GitHub Pages のプロジェクトページ（`https://tmhys.github.io/<repo>/`）で、
 もともと公開されているので直書きしている。公開先を変えたらルートの `index.html` を直す。
+
+**らくな家計簿は Android アプリ（WebView）として入れてある。**
+`kakeibo-pwa` の `android/` は TWA ではなく素の WebView アプリで、`AndroidManifest` に
+https を受け取る intent-filter が無い。そのため https のリンクではアプリが起動せず
+Chrome が開いてしまう。Android のときだけ `portal.js` が
+`intent://#Intent;package=com.tmhys.kakeibo;…;end` に差し替える。
+アプリが入っていない端末は `browser_fallback_url` でウェブ版に落ち、
+PC・iOS では差し替えずウェブ版のままにする。
 
 **Claude Inbox だけ扱いが違う。** 本体は Cloudflare Workers で、ワーカーのホスト名は
 どこにも公開していない。ここは公開リポジトリなので書かず、端末ごとにカードの

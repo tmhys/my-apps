@@ -1,13 +1,48 @@
 'use strict';
-/* ポータルの小さな仕掛け。
+/* ポータルの小さな仕掛け。別アプリのカードで、静的な href だけでは足りないものを扱う。
 
-   別アプリのうち、**URL を公開リポジトリに書きたくないもの**をここで扱う。
-   いまは Claude Inbox（Cloudflare Workers）だけ。ワーカーのホスト名は
-   設計上どこにも公開していないので、このリポジトリにも書かず、端末の
-   localStorage に置く。設定していない端末ではカードが「設定する」になる。
+   1. らくな家計簿 … Android アプリ（WebView）なので、Android では intent:// に
+      差し替えて、ウェブ版ではなくアプリを起動する。
+   2. Claude Inbox … URL を公開リポジトリに書きたくないので、端末の localStorage に
+      置く。ワーカーのホスト名は設計上どこにも公開していない。
 
-   habit-pwa と kakeibo-pwa は tmhys.github.io 配下で元から公開なので、
-   こちらは index.html に直接書いてある。扱いを分けているのはそのため。 */
+   習慣グリッドは tmhys.github.io 配下のウェブ版をそのまま開くので、ここでは触らない。 */
+
+// ---------------------------------------------------------------------------
+// らくな家計簿は Android アプリ（WebView）
+// ---------------------------------------------------------------------------
+
+(function () {
+  // kakeibo-pwa の android/ は TWA ではなく素の WebView アプリで、
+  // AndroidManifest に https を受け取る intent-filter が無い。
+  // そのため https のリンクではアプリが起動せず Chrome が開いてしまう。
+  // Android のときだけ intent:// にして、インストール済みのアプリを直接起動する。
+  const PACKAGE = 'com.tmhys.kakeibo';
+
+  const card = document.getElementById('kakeibo-card');
+  if (!card) return;
+  if (!/Android/i.test(navigator.userAgent)) return; // PC・iOS はウェブ版のまま
+
+  const web = card.getAttribute('href');
+
+  // アプリが入っていない端末では browser_fallback_url でウェブ版に落ちる。
+  // データは端末ごとなので、どちらで開いても設定し直しにはならない。
+  card.setAttribute(
+    'href',
+    'intent://#Intent;package=' + PACKAGE +
+      ';action=android.intent.action.MAIN' +
+      ';category=android.intent.category.LAUNCHER' +
+      ';S.browser_fallback_url=' + encodeURIComponent(web) +
+      ';end'
+  );
+
+  const mark = card.querySelector('.ext-mark');
+  if (mark) mark.textContent = 'アプリ';
+})();
+
+// ---------------------------------------------------------------------------
+// Claude Inbox は URL を端末に置く
+// ---------------------------------------------------------------------------
 
 (function () {
   const KEY = 'portal:inboxUrl';
