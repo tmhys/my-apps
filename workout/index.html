@@ -155,6 +155,22 @@
       <button id="btn-save-settings" class="primary">設定を保存</button>
     </div>
     <div class="card">
+      <h2>Obsidianに記録を残す</h2>
+      <p class="hint">記録を保存したとき、メニューと種目をその日の日記（05_Stream）に1件として残します。習慣「💪 筋トレ」も同時に立つので、習慣管理アプリでタップし直す必要はありません。入れる値は習慣管理アプリ（habit-pwa）の設定と同じ中継のURLと合言葉です。空にすれば送信を止められます。</p>
+      <label class="field">中継のURL（habit-relay）
+        <input type="url" id="s-obs-url" inputmode="url" autocomplete="off" placeholder="https://script.google.com/macros/s/.../exec">
+      </label>
+      <label class="field">合言葉（RELAY_TOKEN）
+        <input type="password" id="s-obs-token" autocomplete="off">
+      </label>
+      <div class="row">
+        <button id="btn-save-obs" type="button" class="primary">連携先を保存</button>
+        <button id="btn-send-obs" type="button">未送信を送る</button>
+      </div>
+      <p class="hint" id="obs-status"></p>
+      <p class="hint">送るのはこれから保存する記録です。ここを設定する前の記録は、履歴画面の「日記に送る」から送れます。圏外のときは端末に溜めておき、次にアプリを開いたときに送ります。送り直しても日記の行は書き換わるだけで増えません。アプリから記録を削除しても日記側の行は残るので、日記側で消してください。</p>
+    </div>
+    <div class="card">
       <h2>データのバックアップ</h2>
       <p class="hint">記録はこの端末のブラウザ内（localStorage）にだけ保存されます。機種変更やブラウザのデータ消去で消えるので、ときどきJSONで書き出して手元に保管してください。書き出したファイルはこのアプリに読み込んで復元できます。</p>
       <div class="row">
