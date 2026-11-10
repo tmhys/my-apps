@@ -438,6 +438,12 @@ function fmtClock(sec) {
   return `${m}:${String(r).padStart(2, '0')}`;
 }
 
+/** 休憩の長さの表示。60秒ちょうどなら「1:00」ではなく「60秒」と書く。 */
+function restLabel(sec) {
+  const n = Math.max(0, Math.round(Number(sec) || 0));
+  return n >= 60 && n % 60 === 0 ? `${n / 60}分` : `${n}秒`;
+}
+
 function startRest(sec) {
   const n = Number(sec) || 0;
   if (n <= 0) return;           // 設定が 0 なら使わない
@@ -636,12 +642,25 @@ function renderEditorLogs() {
         log.sets[si] = parseInt(inp.value, 10) || 0;
         inp.classList.toggle('is-pr', log.sets[si] > prevBest);
       });
-      // 入力を終えた＝そのセットが終わった、とみなして休憩を始める。
+      // 数を直したら、そのセットが終わったとみなして休憩を始める。
+      // ただし目標どおりこなしたときは直すものが無く change が出ない。
+      // それだけに頼ると休憩が一度も始まらないので、下の「休憩」ボタンが本線。
       inp.addEventListener('change', () => {
         if (log.sets[si] > 0) startRest(state.settings.restSec);
       });
       setsWrap.appendChild(inp);
     });
+
+    // セットを終えたら押す。数を直さなくても休憩に入れるようにするため。
+    if (state.settings.restSec > 0) {
+      const restBtn = document.createElement('button');
+      restBtn.type = 'button';
+      restBtn.className = 'mini rest-start';
+      restBtn.textContent = `休憩 ${restLabel(state.settings.restSec)}`;
+      restBtn.addEventListener('click', () => startRest(state.settings.restSec));
+      setsWrap.appendChild(restBtn);
+    }
+
     const addBtn = document.createElement('button');
     addBtn.type = 'button'; addBtn.className = 'mini'; addBtn.textContent = '＋セット';
     addBtn.addEventListener('click', () => { log.sets.push(log.target); renderEditorLogs(); });
