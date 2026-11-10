@@ -29,10 +29,25 @@ localStorage はブラウザのものと共有されないため。移すとき�
 
 ## 入れ方
 
-1. GitHub の **Releases** の「筋トレログ（最新ビルド）」（`android-latest`）から
-   `workout.apk` を落として入れる。更新を自動で追うなら Obtainium に
-   このリポジトリ（`tmhys/my-apps`）を足す
-2. 上の手順で記録を移す
+### Obtainium（更新も追う。おすすめ）
+
+1. Obtainium の「追加」タブを開き、**アプリのソース URL** に
+   `https://github.com/tmhys/my-apps` を入れる（ソースは GitHub と自動で判定される）
+2. 設定はそのままでよい。**「プレリリースを含める」はオフのまま**にする。
+   `android-latest` はプレリリース扱いなので、オフなら番号付きの `v1.x`（＝同じ APK）を追う。
+   オンにすると同じビルドを二重に拾う
+3. 「追加」→ ダウンロード → インストール
+4. 以降は Obtainium が新しい `v1.x` を見つけて更新を知らせる
+
+このリポジトリのリリースには APK が `workout.apk` 1つしか付かないので、
+APK の絞り込み（正規表現）は要らない。
+
+### 手で入れる
+
+**Releases** の「筋トレログ（最新ビルド）」（`android-latest`）から `workout.apk` を
+落として入れる。
+
+どちらで入れても、**記録はブラウザ（PWA）から引き継がれない**（上の手順で移す）。
 
 ## アイコン
 
@@ -51,8 +66,29 @@ localStorage はブラウザのものと共有されないため。移すとき�
 
 鍵ファイル（base64）を Secrets の `WORKOUT_KEYSTORE_B64`、パスワードを
 `WORKOUT_KEYSTORE_PASSWORD` に置く（エイリアスは `workout`）。鍵はリポジトリに置かない。
-無いと debug 鍵でビルドされ、更新のたびにアンインストールが要る。
-鍵をなくすと以後の APK は上書きインストールできなくなるので、控えを残しておくこと。
+
+**無いと debug 鍵でビルドされる。** これは「更新のたびにアンインストールが要る」
+だけでは済まない。debug 鍵は GitHub Actions のランナーが毎回その場で作るので、
+**ビルドごとに別の鍵になる**（v1.1 と v1.2 は実際に指紋が違う）。
+上書き更新ができず、入れ直し＝アプリ内の記録が消える。未設定のときは
+Actions の警告に加えてリリース本文にも出るようにしてある。
+
+作り方（JDK の `keytool` を使う。Windows/PowerShell の例）:
+
+```powershell
+keytool -genkeypair -v -keystore workout.keystore -alias workout `
+  -keyalg RSA -keysize 2048 -validity 10000 `
+  -dname "CN=tmhys, O=tmhys, C=JP"
+# base64 にしてクリップボードへ（これを WORKOUT_KEYSTORE_B64 に貼る）
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("workout.keystore")) | Set-Clipboard
+```
+
+GitHub の Settings → Secrets and variables → Actions → New repository secret で
+`WORKOUT_KEYSTORE_B64` と `WORKOUT_KEYSTORE_PASSWORD` を登録し、Actions の
+「android apk」を **Run workflow** で回し直すと、署名済みの APK が出る。
+
+鍵をなくすと以後の APK は上書きインストールできなくなるので、`workout.keystore`
+そのものの控えを（リポジトリの外に）残しておくこと。
 
 ## ブラウザから開く（`workout://`）
 
