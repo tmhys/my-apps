@@ -1,6 +1,7 @@
 'use strict';
 /* ワークアウトログ PWA
    データは localStorage のみに保存（キー: workoutLogPwa.v1）。
+   設定すれば habit-relay 経由で Obsidian の日記にも記録を残す（キー: workoutLogPwa.obsidian）。
    進行ルール: 全セット目標クリア & RPE<=7 で次回 +1回（秒数は +5秒）。RPE>=9 か未達で据え置き。
    メニュー: A/B/C が基本ローテーション（各2種類から交互に提示）。D（背中）とE（脚＋フットケア）は任意の日。 */
 
@@ -702,7 +703,7 @@ document.getElementById('btn-save').addEventListener('click', () => {
     })
     .filter(Boolean);
 
-  state.sessions.push({
+  const entry = {
     id: uid(),
     date,
     template: document.getElementById('f-template').value,
@@ -710,8 +711,11 @@ document.getElementById('btn-save').addEventListener('click', () => {
     runFeel: document.getElementById('f-runfeel').value.trim(),
     note: document.getElementById('f-note').value.trim(),
     logs,
-  });
+  };
+  state.sessions.push(entry);
   save();
+  // Obsidianへの転記は待たない（圏外でも保存は終わっていてよい。outbox が後で送る）
+  sendSession(entry);
   stopRest();
   currentMenu = null; // 次回メニューを再計算
   if (broke.length) alert(`自己ベスト更新\n\n${broke.join('\n')}`);
@@ -738,6 +742,21 @@ function sessionItemEl(s, withDelete) {
   detail.textContent = lines.join('\n');
   detail.style.whiteSpace = 'pre-line';
   div.appendChild(detail);
+  if (withDelete && obsReady()) {
+    // 連携を後から設定したときや、送れなかったものを手で送るため。
+    // 同じ記録を送り直しても受け側が書き換えるだけなので、増えない。
+    const push = document.createElement('button');
+    push.className = 'del'; push.textContent = '日記に送る';
+    push.addEventListener('click', async () => {
+      push.disabled = true; push.textContent = '送信中…';
+      await sendSession(s);
+      const left = outbox().some(x => x.session.id === s.id);
+      push.textContent = left ? '送れませんでした' : '送りました';
+      if (left) push.disabled = false;
+    });
+    detail.appendChild(document.createElement('br'));
+    detail.appendChild(push);
+  }
   if (withDelete) {
     const del = document.createElement('button');
     del.className = 'del'; del.textContent = 'この記録を削除';
@@ -879,12 +898,194 @@ function renderNextTargets() {
   if (!any) wrap.innerHTML = '<p class="empty">記録が貯まるとここに表示されます</p>';
 }
 
+/* ---------- Obsidian連携 ----------
+   記録を保存したら、habit-relay（gas/habit-relay）経由で github_obsidian に送り、
+   その日のストリームノート（05_Stream）にメニューと種目を1件として残す。
+   習慣「💪 筋トレ」も受け側の workflow の中で一緒に立つので、ここからは送らない。
+
+   接続先（URLと合言葉）は記録本体とは別のキーに置く。JSONの書き出しに
+   合言葉を混ぜたくないため（書き出しファイルは手元に残すもの）。
+   送れなかったものは outbox に積み、次にアプリを開いたときや設定画面から送り直す。
+   同じ記録を送り直しても、受け側が id で行を書き換えるので二重にはならない。 */
+
+const OBS_KEY = 'workoutLogPwa.obsidian';
+const OUTBOX_KEY = 'workoutLogPwa.outbox';
+const OUTBOX_MAX = 50;
+const OUTBOX_TRIES = 5; // これを超えたら自動送信はやめる（設定画面から手動で送れる）
+
+function obsConfig() {
+  try {
+    const raw = localStorage.getItem(OBS_KEY);
+    const c = raw ? JSON.parse(raw) : null;
+    return { url: (c && c.url) || '', token: (c && c.token) || '' };
+  } catch { return { url: '', token: '' }; }
+}
+function setObsConfig(c) {
+  try { localStorage.setItem(OBS_KEY, JSON.stringify(c)); } catch {}
+}
+function obsReady() {
+  const c = obsConfig();
+  return !!(c.url && c.token);
+}
+
+function outbox() {
+  try {
+    const list = JSON.parse(localStorage.getItem(OUTBOX_KEY) || '[]');
+    return Array.isArray(list) ? list : [];
+  } catch { return []; }
+}
+function setOutbox(list) {
+  try { localStorage.setItem(OUTBOX_KEY, JSON.stringify(list.slice(-OUTBOX_MAX))); } catch {}
+}
+function outboxPut(session) {
+  const list = outbox().filter(x => x.session.id !== session.id); // 同じ記録は1件だけ
+  list.push({ session, tries: 0, error: '' });
+  setOutbox(list);
+}
+function outboxDrop(id) {
+  setOutbox(outbox().filter(x => x.session.id !== id));
+}
+
+/**
+ * 保存した記録を、受け側（add_strength.py）が読む形に組み直す。
+ * 記録した日の 05_Stream に入るよう epoch を渡す。過去の日を選んで
+ * あとから入力したときは、その日の12:00として送る（時刻は分からないため）。
+ */
+function sessionPayload(s) {
+  const exercises = (s.logs || []).map(l => {
+    const sets = (l.sets || []).map(v => Math.max(0, parseInt(v, 10) || 0)).filter(v => v > 0);
+    const ex = {
+      name: l.name || (EX[l.key] ? EX[l.key].name : l.key),
+      sets,
+      unit: unitOf(l.key),
+    };
+    if (l.effort) ex.effort = l.effort;
+    if (l.variation) ex.variation = l.variation;
+    return ex;
+  }).filter(ex => ex.sets.length);
+
+  let epoch = Math.floor(Date.now() / 1000);
+  if (s.date && s.date !== todayStr()) {
+    const noon = new Date(`${s.date}T12:00:00`);
+    if (!isNaN(noon.getTime())) epoch = Math.floor(noon.getTime() / 1000);
+  }
+
+  const payload = { id: s.id, epoch, menu: menuLabel(s.template), exercises };
+  if (s.legFatigue) payload.legFatigue = s.legFatigue;
+  if (s.runFeel) payload.runFeel = s.runFeel;
+  if (s.note) payload.note = s.note;
+  return payload;
+}
+
+/**
+ * habit-relay に投げる。Content-Type を text/plain にするのは、ほかのアプリと
+ * 同じ理由（gas は CORS のプリフライトに答えられない）。
+ * 戻り値: 'sent' / 'retry'（通信やサーバの不調。あとで送り直す）/ Error（内容の不備）
+ */
+async function relaySend(session) {
+  const c = obsConfig();
+  if (!c.url || !c.token) throw new Error('設定画面で中継のURLと合言葉を入力してください');
+  let url;
+  try { url = new URL(c.url); } catch { throw new Error('中継のURLが正しい形式ではありません'); }
+
+  let res;
+  try {
+    res = await fetch(url.toString(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ token: c.token, action: 'strength', session }),
+    });
+  } catch {
+    return 'retry'; // 圏外・機内モードなど
+  }
+  if (!res.ok) return 'retry';
+
+  let data;
+  try { data = await res.json(); } catch { return 'retry'; }
+  if (data && data.ok) return 'sent';
+  throw new Error((data && data.error) || '送れませんでした');
+}
+
+/** 記録を1件送る。送れなければ outbox に残す。画面は止めない。 */
+async function sendSession(s) {
+  const session = sessionPayload(s);
+  if (!session.exercises.length) return; // 全セット0の記録は送らない
+  if (!obsReady()) return;
+  outboxPut(session); // 先に積む。送信中にアプリを閉じても消えない
+  try {
+    const r = await relaySend(session);
+    if (r === 'sent') outboxDrop(session.id);
+    else markOutboxError(session.id, '通信できませんでした');
+  } catch (err) {
+    markOutboxError(session.id, String((err && err.message) || err));
+  }
+  renderObsStatus();
+}
+
+function markOutboxError(id, message) {
+  const list = outbox();
+  const item = list.find(x => x.session.id === id);
+  if (!item) return;
+  item.tries = (item.tries || 0) + 1;
+  item.error = message;
+  setOutbox(list);
+}
+
+/** 溜まったものを順に送る。force のときは諦めた分も送り直す。 */
+async function flushOutbox(force) {
+  if (!obsReady()) return;
+  for (const item of outbox()) {
+    if (!force && (item.tries || 0) >= OUTBOX_TRIES) continue;
+    try {
+      const r = await relaySend(item.session);
+      if (r === 'sent') outboxDrop(item.session.id);
+      else { markOutboxError(item.session.id, '通信できませんでした'); break; } // 圏外なら以降も同じ
+    } catch (err) {
+      markOutboxError(item.session.id, String((err && err.message) || err));
+    }
+  }
+  renderObsStatus();
+}
+
+function renderObsStatus() {
+  const el = document.getElementById('obs-status');
+  if (!el) return;
+  if (!obsReady()) { el.textContent = '未設定（送信しません）'; return; }
+  const list = outbox();
+  if (!list.length) { el.textContent = '送信済み（未送信はありません）'; return; }
+  const last = list[list.length - 1];
+  el.textContent = `未送信 ${list.length} 件${last.error ? `／${last.error}` : ''}`;
+}
+
 /* ---------- 設定・データ ---------- */
 function renderSettings() {
   document.getElementById('s-weekly').value = state.settings.weeklyTarget;
   document.getElementById('s-minutes').value = state.settings.targetMinutes;
   document.getElementById('s-rest').value = state.settings.restSec;
+  const c = obsConfig();
+  document.getElementById('s-obs-url').value = c.url;
+  document.getElementById('s-obs-token').value = c.token;
+  renderObsStatus();
 }
+
+document.getElementById('btn-save-obs').addEventListener('click', async () => {
+  const url = document.getElementById('s-obs-url').value.trim();
+  const token = document.getElementById('s-obs-token').value.trim();
+  if (url && !/^https:\/\//.test(url)) { alert('中継のURLは https:// から始まるものを入れてください'); return; }
+  setObsConfig({ url, token });
+  renderObsStatus();
+  alert(url && token ? '連携先を保存しました' : '連携先を消しました（送信しません）');
+  if (url && token) await flushOutbox(true);
+});
+
+document.getElementById('btn-send-obs').addEventListener('click', async () => {
+  if (!obsReady()) { alert('先に中継のURLと合言葉を入力してください'); return; }
+  const list = outbox();
+  if (!list.length) { alert('未送信の記録はありません'); return; }
+  await flushOutbox(true);
+  const left = outbox().length;
+  alert(left ? `${left} 件が残りました。${outbox()[0].error || ''}` : 'すべて送りました');
+});
 document.getElementById('btn-save-settings').addEventListener('click', () => {
   const w = parseInt(document.getElementById('s-weekly').value, 10);
   const m = parseInt(document.getElementById('s-minutes').value, 10);
@@ -943,3 +1144,5 @@ document.getElementById('btn-wipe').addEventListener('click', () => {
 
 /* ---------- 初期表示 ---------- */
 renderHome();
+// 前回送れなかった分を拾う（圏外で保存したときなど）
+flushOutbox(false);
