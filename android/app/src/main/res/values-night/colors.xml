@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="app_background">#111418</color>
-    <color name="app_accent">#2BB08A</color>
+    <!-- 夜に読み込み中の背景が白く光らないようにするだけ。
+         ワークアウトログの画面自体はまだ明るい配色のみ。 -->
+    <color name="app_background">#1A1A19</color>
+    <color name="app_accent">#2E8B68</color>
 </resources>

@@ -40,7 +40,7 @@ function useAndroidApp(cardId, pkg, scheme, mark) {
 }
 
 // ワークアウトログ（筋トレログ）。ポータルの中のモジュールだが、アプリ版もある。
-useAndroidApp('workout-card', 'com.tmhys.workout', 'workout', '');
+useAndroidApp('workout-card', 'com.tmhys.workout', 'workout', 'アプリ');
 
 // らくな家計簿。
 useAndroidApp('kakeibo-card', 'com.tmhys.kakeibo', 'kakeibo', 'アプリ');

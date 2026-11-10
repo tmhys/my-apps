@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Web 側（style.css の背景色・アクセント色）と同じ色。読み込み中やステータスバーの裏に出る -->
-    <color name="app_background">#F6F7F9</color>
-    <color name="app_accent">#0F765C</color>
+    <!-- Web 側（workout/styles.css の背景色・アクセント色）と同じ色。
+         読み込み中やステータスバーの裏に出る -->
+    <color name="app_background">#F4F2ED</color>
+    <color name="app_accent">#1E6B4F</color>
 </resources>
