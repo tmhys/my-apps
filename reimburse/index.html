@@ -59,7 +59,14 @@
 
     <div class="card">
       <h2>未精算の明細</h2>
+      <p class="cap">行をタップすると、メモ・精算対象・レシートを開けます。</p>
       <div id="items"></div>
+    </div>
+
+    <div class="card" id="excluded-card" hidden>
+      <h2 id="excluded-title">精算対象外</h2>
+      <p class="cap">送金額には入っていません。戻すときは行をタップ。</p>
+      <div id="excluded"></div>
     </div>
 
     <p class="hint" id="foot"></p>
