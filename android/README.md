@@ -80,7 +80,7 @@ keytool -genkeypair -v -keystore workout.keystore -alias workout `
   -keyalg RSA -keysize 2048 -validity 10000 `
   -dname "CN=tmhys, O=tmhys, C=JP"
 # base64 にしてクリップボードへ（これを WORKOUT_KEYSTORE_B64 に貼る）
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("workout.keystore")) | Set-Clipboard
+[Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path .\workout.keystore))) | Set-Clipboard
 ```
 
 GitHub の Settings → Secrets and variables → Actions → New repository secret で
