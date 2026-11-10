@@ -3,7 +3,14 @@
 
    gas/receipt-reimbursement のウェブアプリをバックエンドにした薄いクライアント。
    未精算の集計・重複判定・精算済みの書き込みはすべて gas 側にあり、
-   このモジュールは表示と「精算済みにする」の送信だけを行う。
+   このモジュールは表示と、明細1件の操作（メモ・精算対象の切り替え）の送信だけを行う。
+
+   明細は行をタップすると開く。開いた中でできるのは次の3つ。
+   - メモを書く（自分で確かめたあとの覚え書き。シートの「メモ」列）
+   - 精算対象から外す／戻す（シートの「精算対象」列。精算額は gas 側の数式が追従する）
+   - レシートの画像を開く（Drive のファイル）
+   直したら読み込み直す。送金額やカテゴリ別も一緒に変わるため、
+   手元で足し引きして辻褄を合わせない。
 
    - 接続先（URLと合言葉）は localStorage に保存する。キーは 'reimburse:' 始まり。
      同じオリジン（tmhys.github.io）に habit-pwa / kakeibo-pwa / workout が同居して
@@ -131,6 +138,47 @@ async function apiSettle(month) {
   return data;
 }
 
+/**
+ * 明細1件を直す。patch は {note} か {target} か両方。
+ *
+ * expect には画面に出ていた購入日と金額を入れて送る。gas 側はそれが
+ * シートの行と一致したときだけ書き込む。シートを手で並べ替えた後などに
+ * 行番号だけで書くと、関係ない行を壊すため。
+ */
+async function apiUpdate(item, patch) {
+  const s = getSettings();
+  if (!s.baseUrl || !s.token) throw new Error('設定画面でWebApp URLとトークンを入力してください');
+
+  const body = Object.assign(
+    { action: 'update', token: s.token, row: item.row,
+      expect: { date: item.date, amount: item.amount } },
+    patch
+  );
+
+  let res;
+  try {
+    res = await fetch(s.baseUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    throw new Error('通信できませんでした（URLかネットワークを確認してください）');
+  }
+
+  let data;
+  try {
+    data = await res.json();
+  } catch (e) {
+    throw new Error('サーバーの応答がJSONではありません');
+  }
+  if (data && data.error) throw new Error(data.error);
+  if (!data || data.ok !== true) {
+    throw new Error('gas側（receipt-reimbursement）が古いようです。最新のコードを push して再デプロイしてください');
+  }
+  return data;
+}
+
 // ---------------------------------------------------------------------------
 // 表示
 // ---------------------------------------------------------------------------
@@ -174,6 +222,76 @@ let viewMonth = '';
 let current = null;
 /** 精算ボタンが確認待ちかどうか。 */
 let armed = false;
+
+/** 行番号 -> 明細。開いた行の中身を引くため。 */
+let byRow = {};
+/** いま開いている行番号。0なら閉じている。 */
+let openRow = 0;
+
+function itemsTable(items, hiddenCount) {
+  const rows = items.map((it) =>
+    '<tr class="item" data-row="' + it.row + '">' +
+      '<td class="d">' + escapeHtml(shortDate(it.date) || '日付なし') + '</td>' +
+      '<td>' + escapeHtml(it.store) +
+        (it.carried ? '<span class="tag">繰越</span>' : '') +
+        (it.needsReview ? '<span class="tag rv">要確認</span>' : '') +
+        (it.note ? '<span class="tag">メモ</span>' : '') +
+        '<div class="sub">' + escapeHtml(it.category) + '</div></td>' +
+      '<td class="a">' + (it.target ? yen(it.settle) : '<span class="off">対象外</span>') + '</td>' +
+    '</tr>' +
+    '<tr class="detail" data-detail="' + it.row + '" hidden><td colspan="3"></td></tr>'
+  ).join('');
+  const more = hiddenCount
+    ? '<p class="cap" style="margin-top:10px">ほか ' + hiddenCount + ' 件（シートで見られます）</p>'
+    : '';
+  return '<table>' + rows + '</table>' + more;
+}
+
+/** 開いた行の中身。メモ・精算対象・レシート。 */
+function detailHtml(it) {
+  const h = [];
+  h.push('<div class="detail-box">');
+  h.push('<div class="sub">' + escapeHtml(it.row + '行目 · ' + it.store + ' · ' + yen(it.amount)) + '</div>');
+
+  h.push('<label class="dl" for="note-' + it.row + '">メモ</label>');
+  h.push('<textarea id="note-' + it.row + '" class="note" rows="2" ' +
+    'placeholder="確かめた内容など">' + escapeHtml(it.note || '') + '</textarea>');
+
+  h.push('<div class="detail-acts">');
+  h.push('<button type="button" class="secondary" data-act="save-note">メモを保存</button>');
+  h.push('<button type="button" class="secondary' + (it.target ? '' : ' back') + '" data-act="toggle">' +
+    (it.target ? '精算対象から外す' : '精算対象に戻す') + '</button>');
+  h.push('</div>');
+
+  if (it.fileUrl) {
+    h.push('<a class="receipt" href="' + escapeHtml(it.fileUrl) + '" target="_blank" rel="noopener">レシートの画像を開く</a>');
+  } else {
+    h.push('<p class="cap">レシートの画像が見つかりません（手で足した行かもしれません）。</p>');
+  }
+  h.push('</div>');
+  return h.join('');
+}
+
+function closeDetail() {
+  openRow = 0;
+  document.querySelectorAll('tr.detail').forEach((tr) => {
+    tr.hidden = true;
+    tr.firstChild.innerHTML = '';
+  });
+  document.querySelectorAll('tr.item.open').forEach((tr) => tr.classList.remove('open'));
+}
+
+function openDetail(row) {
+  const it = byRow[row];
+  const tr = document.querySelector('tr.detail[data-detail="' + row + '"]');
+  if (!it || !tr) return;
+  closeDetail();
+  openRow = row;
+  tr.hidden = false;
+  tr.firstChild.innerHTML = detailHtml(it);
+  const head = document.querySelector('tr.item[data-row="' + row + '"]');
+  if (head) head.classList.add('open');
+}
 
 function render(m) {
   current = m;
@@ -242,23 +360,25 @@ function render(m) {
   ).join('');
 
   // 明細
+  byRow = {};
+  (m.items || []).concat(m.excluded || []).forEach((it) => { byRow[it.row] = it; });
+
   const items = m.items || [];
-  if (!items.length) {
-    el('items').innerHTML = '<p class="cap">この月までの未精算はありません。</p>';
-  } else {
-    const rows = items.map((it) =>
-      '<tr><td class="d">' + escapeHtml(shortDate(it.date)) + '</td>' +
-      '<td>' + escapeHtml(it.store) +
-        (it.carried ? '<span class="tag">繰越</span>' : '') +
-        (it.needsReview ? '<span class="tag rv">要確認</span>' : '') +
-        '<div class="sub">' + escapeHtml(it.category) + '</div></td>' +
-      '<td class="a">' + yen(it.settle) + '</td></tr>'
-    ).join('');
-    const more = m.hiddenCount
-      ? '<p class="cap" style="margin-top:10px">ほか ' + m.hiddenCount + ' 件（シートで見られます）</p>'
-      : '';
-    el('items').innerHTML = '<table>' + rows + '</table>' + more;
+  el('items').innerHTML = items.length
+    ? itemsTable(items, m.hiddenCount)
+    : '<p class="cap">この月までの未精算はありません。</p>';
+
+  // 精算対象から外してある分。送金額には入らないが、ここから戻せる。
+  const excluded = m.excluded || [];
+  el('excluded-card').hidden = excluded.length === 0;
+  if (excluded.length) {
+    el('excluded-title').textContent = '精算対象外 ' + (m.excludedCount || excluded.length) + ' 件';
+    el('excluded').innerHTML = itemsTable(excluded, m.excludedHidden);
   }
+
+  // 開いていた行は開いたままにする（メモを直した直後に閉じると、
+  // 反映されたのか分からなくなるため）。
+  if (openRow && byRow[openRow]) openDetail(openRow);
 
   // フッタ
   const foot = [];
@@ -435,3 +555,59 @@ el('settle').onclick = async () => {
 };
 
 load(thisMonth());
+
+/**
+ * 明細のタップ。行を開く／閉じる、メモの保存、精算対象の切り替え。
+ *
+ * 行は描き直すたびに作り直されるので、個々の行に onclick は付けず、
+ * 外側で受ける。開いた中のボタンも同じ経路で拾う。
+ */
+function wireItems(containerId) {
+  el(containerId).addEventListener('click', async (ev) => {
+    const btn = ev.target.closest('button[data-act]');
+    if (btn) {
+      await runItemAction(btn);
+      return;
+    }
+    // 開いた中のテキスト入力やリンクは、行の開閉に巻き込まない。
+    if (ev.target.closest('tr.detail')) return;
+
+    const head = ev.target.closest('tr.item');
+    if (!head) return;
+    const row = Number(head.dataset.row);
+    if (row === openRow) closeDetail();
+    else openDetail(row);
+  });
+}
+
+async function runItemAction(btn) {
+  const it = byRow[openRow];
+  if (!it) return;
+
+  const patch = {};
+  if (btn.dataset.act === 'save-note') {
+    const box = document.getElementById('note-' + it.row);
+    patch.note = box ? box.value : '';
+  } else if (btn.dataset.act === 'toggle') {
+    patch.target = !it.target;
+  } else {
+    return;
+  }
+
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '送信中…';
+  try {
+    const res = await apiUpdate(it, patch);
+    show('ok', res.message || '更新しました。');
+    // 送金額もカテゴリ別も変わる。手元で足し引きせず、取り直す。
+    await load(viewMonth, { quiet: true, keepView: true });
+  } catch (e) {
+    show('ng', e.message);
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+}
+
+wireItems('items');
+wireItems('excluded');
