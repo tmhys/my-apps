@@ -42,8 +42,13 @@ jobs:
         run: |
           if [ -n "$WORKOUT_KEYSTORE_B64" ] && [ -n "$WORKOUT_KEYSTORE_PASSWORD" ]; then
             echo "$WORKOUT_KEYSTORE_B64" | base64 -d > app/workout.keystore
+            echo "SIGNED=1" >> "$GITHUB_ENV"
           else
+            # debug 鍵はランナーごとに作り直されるので、ビルドのたびに別の鍵になる。
+            # 上書き更新できず、入れ直し（＝記録が消える）になるため、警告だけでなく
+            # リリース本文にも残す。Actions の警告は後から見ないので気づけない。
             echo "::warning::Secrets に WORKOUT_KEYSTORE_B64 / WORKOUT_KEYSTORE_PASSWORD が無いので debug 鍵でビルドする（上書き更新できない）"
+            echo "SIGNED=" >> "$GITHUB_ENV"
           fi
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
@@ -66,15 +71,24 @@ jobs:
           set -euo pipefail
           cp app/build/outputs/apk/release/app-release.apk workout.apk
           version="1.${GITHUB_RUN_NUMBER}"   # app/build.gradle.kts の versionName と同じ
+          notes="コミット ${GITHUB_SHA:0:7} のビルド。"
+          # 本文は printf で組む。run: | の中は行頭を下げないと YAML が壊れるため。
+          if [ -z "${SIGNED:-}" ]; then
+            notes="$(printf '%s\n\n%s\n%s\n%s\n%s' "$notes" \
+              '⚠️ **署名鍵が未設定のため debug 鍵でビルドしています。**' \
+              'この鍵はビルドのたびに変わるので、**前の版に上書き更新できません**' \
+              '（入れ直しになり、アプリ内の記録が消えます）。' \
+              '直し方は `android/README.md` の「署名鍵」を参照。')"
+          fi
           gh release create "v${version}" workout.apk \
             --target "$GITHUB_SHA" --latest \
             --title "筋トレログ ${version}" \
-            --notes "コミット ${GITHUB_SHA:0:7} のビルド。"
+            --notes "$notes"
           gh release delete android-latest --yes --cleanup-tag || true
           gh release create android-latest workout.apk \
             --prerelease \
             --title "筋トレログ（最新ビルド）" \
-            --notes "コミット ${GITHUB_SHA:0:7} のビルド（v${version} と同じ APK）。"
+            --notes "$(printf '%s\n\n%s' "v${version} と同じ APK。" "$notes")"
           # 番号付きのリリースは新しい5つだけ残す
           gh release list --limit 100 --json tagName --jq '.[].tagName' \
             | grep -E '^v1\.[0-9]+$' | sort -t. -k2 -n -r | tail -n +6 \
