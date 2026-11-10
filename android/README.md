@@ -73,22 +73,52 @@ APK の絞り込み（正規表現）は要らない。
 上書き更新ができず、入れ直し＝アプリ内の記録が消える。未設定のときは
 Actions の警告に加えてリリース本文にも出るようにしてある。
 
-作り方（JDK の `keytool` を使う。Windows/PowerShell の例）:
+作り方（JDK の `keytool` を使う。Windows/PowerShell）。
+
+**keytool に何も聞かせない・何も読ませない形にすること。** 対話形式だと、
+Java 18 以降は出力が UTF-8 なのに Windows のコンソールが Shift_JIS なので、
+日本語のプロンプトが文字化けして何を聞かれているか読めない。
+パスワードを引数で渡し、結果の確認は PowerShell 側（＝化けない）でやる。
 
 ```powershell
-keytool -genkeypair -v -keystore workout.keystore -alias workout `
-  -keyalg RSA -keysize 2048 -validity 10000 `
-  -dname "CN=tmhys, O=tmhys, C=JP"
-# base64 にしてクリップボードへ（これを WORKOUT_KEYSTORE_B64 に貼る）
+cd ~\Documents
+Remove-Item .\workout.keystore -ErrorAction SilentlyContinue
+$pw = -join ((48..57)+(65..90)+(97..122) | Get-Random -Count 24 | ForEach-Object {[char]$_})
+keytool -genkeypair -alias workout -keystore workout.keystore -storepass $pw -keypass $pw -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=tmhys, O=tmhys, C=JP" 2>&1 | Out-Null
+Set-Content .\workout-password.txt $pw
+if (Test-Path .\workout.keystore) { "OK" } else { "FAILED" }
+```
+
+パスワードは自分で覚える必要がないので、その場で作って
+`workout-password.txt` に書き出している（覚えたパスワードを使い回さないため）。
+`OK` が出たら Secrets に登録する。貼る値は1つずつクリップボードに載せる。
+
+```powershell
+# WORKOUT_KEYSTORE_B64 に貼る
 [Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path .\workout.keystore))) | Set-Clipboard
+# WORKOUT_KEYSTORE_PASSWORD に貼る
+Get-Content .\workout-password.txt | Set-Clipboard
 ```
 
 GitHub の Settings → Secrets and variables → Actions → New repository secret で
-`WORKOUT_KEYSTORE_B64` と `WORKOUT_KEYSTORE_PASSWORD` を登録し、Actions の
-「android apk」を **Run workflow** で回し直すと、署名済みの APK が出る。
+2つとも登録し、Actions の「android apk」を **Run workflow** で回し直すと、
+署名済みの APK が出る（リリース本文の ⚠️ が消える）。
+
+中身を確かめたいときは、英語で出させれば化けない:
+
+```powershell
+keytool -J-Duser.language=en -list -v -keystore workout.keystore -alias workout
+```
+
+`Alias name: workout` と `Owner: CN=tmhys, O=tmhys, C=JP` が出れば正しい。
+エイリアスは `workout` でなければならない（`build.gradle.kts` に直書き）。
 
 鍵をなくすと以後の APK は上書きインストールできなくなるので、`workout.keystore`
-そのものの控えを（リポジトリの外に）残しておくこと。
+と `workout-password.txt` の控えを（リポジトリの外に）残しておくこと。
+
+家計簿アプリ（`kakeibo-pwa`）も同じ作りだが、**鍵は共用しない**。
+エイリアスも Secret 名も別（`kakeibo` / `KAKEIBO_KEYSTORE_*`）で、
+片方の鍵が漏れても、もう片方のアプリは巻き添えにならないようにしてある。
 
 ## ブラウザから開く（`workout://`）
 
