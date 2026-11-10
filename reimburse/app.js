@@ -172,10 +172,12 @@ async function apiUpdate(item, patch) {
   } catch (e) {
     throw new Error('サーバーの応答がJSONではありません');
   }
-  if (data && data.error) throw new Error(data.error);
-  if (!data || data.ok !== true) {
-    throw new Error('gas側（receipt-reimbursement）が古いようです。最新のコードを push して再デプロイしてください');
+  const stale = 'gas側（receipt-reimbursement）が古いようです。最新のコードを push して再デプロイしてください';
+  if (data && data.error) {
+    // 再デプロイ前の gas は update を知らない。そのままの文面だと原因が分からない。
+    throw new Error(/知らない action/.test(data.error) ? stale : data.error);
   }
+  if (!data || data.ok !== true) throw new Error(stale);
   return data;
 }
 
