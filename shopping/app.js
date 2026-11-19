@@ -267,13 +267,9 @@ function baseActions(tab) {
     return [['confirm', '発注待ちへ', 'go'], ['hold', 'あとで', ''], ['reject', '見送り', '']];
   }
   if (tab === 'wishlist') {
-    return [
-      ['price', '相場を調べる', ''],
-      ['register:必需品', '必需品として登録', 'go'],
-      ['register:消耗品', '消耗品として登録', 'go'],
-      ['confirm', '今回だけ買う', ''],
-      ['reject', '見送り', ''],
-    ];
+    // 「必需品として登録／消耗品として登録／今回だけ買う」は使い分けが難しいので「買う」1つにした。
+    // 中身は今回だけ買う（発注待ちへ。品目マスタには登録しない）と同じ。gas の画面と揃えてある。
+    return [['confirm', '買う', 'go'], ['price', '相場を調べる', ''], ['reject', '見送り', '']];
   }
   return [['done', '届いた', 'go'], ['confirm', '発注待ちに戻す', '']];
 }
@@ -316,6 +312,20 @@ function show(kind, text) {
 
 function clearMsg() {
   el('msg').hidden = true;
+}
+
+/**
+ * ボタンの結果は画面の下に一瞬だけ出す。上の #msg に出すと、出すたびに
+ * 先頭へスクロールすることになり、続けて押していると表示がずれる。
+ */
+let toastTimer = null;
+function toast(kind, text) {
+  const box = el('toast');
+  box.className = 'toast ' + kind;
+  box.textContent = text;
+  box.hidden = false;
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => { box.hidden = true; }, kind === 'ng' ? 6000 : 2500);
 }
 
 let payload = null;
@@ -502,6 +512,46 @@ function renderSubscriptions() {
 }
 
 // ---------------------------------------------------------------------------
+// 続けて押しても表示がずれないように
+//
+// 押すたびに一覧を取り直して描き直すと、取り直しの最中に次のカードを押したとき
+// カードが入れ替わって位置がずれる。押した行は手元ですぐ消し、取り直しは
+// 最後に押してから少し待って1回だけにする。押している途中は描き直さない。
+// ---------------------------------------------------------------------------
+
+let busy = 0;
+let refreshTimer = null;
+
+function scheduleRefresh() {
+  window.clearTimeout(refreshTimer);
+  refreshTimer = window.setTimeout(() => {
+    if (busy) {
+      scheduleRefresh();
+      return;
+    }
+    load({ quiet: true });
+  }, 1500);
+}
+
+/** 押した操作で行がいまのタブから外れるか。gas の orderListAction と揃える。 */
+const LEAVES_TAB = ['order', 'confirm', 'hold', 'reject', 'done', 'register', 'merge'];
+
+/** 手元の一覧を先に直す。サーバーの答えは取り直しで上書きされる。 */
+function applyLocally(id, action, body) {
+  if (!payload || !payload.list) return;
+  const rows = payload.list[tab];
+  if (!Array.isArray(rows)) return;
+  if (LEAVES_TAB.indexOf(action) !== -1) {
+    payload.list[tab] = rows.filter((r) => r.id !== id);
+    return;
+  }
+  const row = rows.find((r) => r.id === id);
+  if (!row) return;
+  if (action === 'rename') { row.item = body.name; row.needsName = false; }
+  if (action === 'separate') row.dupLabel = '';
+}
+
+// ---------------------------------------------------------------------------
 // 読み込みと操作
 // ---------------------------------------------------------------------------
 
@@ -526,7 +576,13 @@ async function load(options) {
   }
 
   try {
-    payload = await apiGet();
+    const fresh = await apiGet();
+    if (busy) {
+      // 取りに行っている間に別のボタンが押された。古い答えで描き直さず、あとで取り直す。
+      scheduleRefresh();
+      return;
+    }
+    payload = fresh;
     saveCache(payload);
     render();
     renderSubscriptions();
@@ -555,19 +611,23 @@ async function runAction(id, act, button) {
       }
       forgetDismissed(id);
       render();
-      show('ok', '見送りリストから削除しました');
+      toast('ok', '見送りリストから削除しました');
       return;
     }
     if (act === 'restore') {
+      busy++;
       try {
         // gas の遷移表で「見送り → 確認済（発注待ち）」が許可されている。
         const res = await apiPost({ action: 'confirm', id: id });
         forgetDismissed(id);
-        show('ok', res.message || '発注待ちに戻しました');
-        await load({ quiet: true });
+        render();
+        toast('ok', res.message || '発注待ちに戻しました');
+        scheduleRefresh();
       } catch (e) {
-        show('ng', e.message);
+        toast('ng', e.message);
         buttons.forEach((b) => { b.disabled = false; });
+      } finally {
+        busy--;
       }
       return;
     }
@@ -606,16 +666,21 @@ async function runAction(id, act, button) {
     body.name = name.trim();
   }
 
+  busy++;
   try {
     const res = await apiPost(body);
-    // 見送った控えは、取り直しで payload が差し替わる前に写しておく。
+    // 見送った控えは、手元の一覧から消す前に写しておく。
     if (parts[0] === 'reject') rememberDismissed(findRow(id));
-    show('ok', res.message || '更新しました');
-    // stay が立っている操作（相場調べなど）はレーンが動かない。どちらにせよ取り直す。
-    await load({ quiet: true });
+    applyLocally(id, parts[0], body);
+    render();
+    toast('ok', res.message || '更新しました');
+    // 相場調べなどはレーンが動かないが、結果を出すために取り直す。
+    scheduleRefresh();
   } catch (e) {
-    show('ng', e.message);
+    toast('ng', e.message);
     buttons.forEach((b) => { b.disabled = false; });
+  } finally {
+    busy--;
   }
 }
 

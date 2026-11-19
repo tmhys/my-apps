@@ -142,3 +142,14 @@ code { font-size: 12px; background: var(--bg); padding: 1px 4px; border-radius: 
 .sub-card.between .when { color: var(--sub); }
 .sub-card.silent { border-color: var(--danger); }
 .sub-card.silent .when { color: var(--danger); }
+/* 定期便: 登録だけ・解約済み */
+.sub-card.registered .when { color: var(--sub); }
+.sub-card.cancelled { opacity: .55; }
+/* ボタンの結果（画面の下に一瞬） */
+.toast {
+  position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%); z-index: 20; max-width: calc(100% - 32px);
+  padding: 10px 14px; border-radius: 10px; font-size: 13px; line-height: 1.5;
+  background: var(--ink); color: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
+}
+.toast.ng { background: var(--danger); }
