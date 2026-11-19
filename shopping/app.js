@@ -23,7 +23,12 @@
      控えを消す操作（シート側の「見送り」記録自体は残る）。
    - Amazon / 楽天のリンクバッジ: 検索リンクは全商品に常時付くため、商品ページ
      への直接リンク（送られたリンク・前回と同じ・最安の商品）があるかどうかを
-     バッジで区別して出す。 */
+     バッジで区別して出す。
+
+   ■定期便は別ページ
+   定期便は買い物依頼の流れから切り離した（gas の Subscriptions.gs の冒頭）。
+   依頼のカードには定期便を出さず、ヘッダーの「定期便」から開く別の画面で、
+   メールから作った一覧（payload.subscriptions）を見せるだけにしている。 */
 
 const STORE_PREFIX = 'shopping:';
 
@@ -131,12 +136,20 @@ function forgetDismissed(id) {
   saveDismissed(loadDismissed().filter((d) => d.id !== id));
 }
 
+/**
+ * サーバーの一覧のうちレーン（配列）だけ。list には today（文字列）なども入っているので、
+ * キーを総なめにすると文字列に forEach して落ちる。
+ */
+function lanes() {
+  const list = (payload && payload.list) || {};
+  return Object.keys(list).map((k) => list[k]).filter(Array.isArray);
+}
+
 /** いまサーバー側のどこかのレーンに居る id 集合。 */
 function laneIds() {
   const ids = {};
-  const list = (payload && payload.list) || {};
-  Object.keys(list).forEach((k) => {
-    (list[k] || []).forEach((r) => { ids[r.id] = true; });
+  lanes().forEach((rows) => {
+    rows.forEach((r) => { ids[r.id] = true; });
   });
   return ids;
 }
@@ -155,10 +168,9 @@ function currentDismissed() {
 
 /** 現在の一覧から id で1件引く。 */
 function findRow(id) {
-  const list = (payload && payload.list) || {};
-  const keys = Object.keys(list);
-  for (let i = 0; i < keys.length; i++) {
-    const hit = (list[keys[i]] || []).find((r) => r.id === id);
+  const all = lanes();
+  for (let i = 0; i < all.length; i++) {
+    const hit = all[i].find((r) => r.id === id);
     if (hit) return hit;
   }
   return null;
@@ -266,11 +278,10 @@ function baseActions(tab) {
   return [['done', '届いた', 'go'], ['confirm', '発注待ちに戻す', '']];
 }
 
-/** 重複の疑い・名前が仮・定期便が止まっている、は通常のボタンより先に出す。 */
+/** 重複の疑い・名前が仮、は通常のボタンより先に出す。 */
 function actionsFor(tab, r) {
   if (r && r.dupLabel) return [['merge', '同じ（まとめる）', 'go'], ['separate', '別のもの', '']];
   if (r && r.needsName) return [['rename', '名前をつける', 'go']].concat(baseActions(tab));
-  if (r && r.subStale) return [['delivered', '定期便が届いた', '']].concat(baseActions(tab));
   return baseActions(tab);
 }
 
@@ -310,12 +321,18 @@ function clearMsg() {
 let payload = null;
 let tab = 'waiting';
 
-/** URLのホストから店を判定する。判定できなければ ''。 */
+/**
+ * URLのホストから店を判定する。判定できなければ ''。
+ * 共有ボタンから送られるのはたいてい短縮URL（amzn.asia / amzn.to / a.co、楽天は r10.to）
+ * なので、それも店のリンクとして数える。
+ */
 function shopOf(url) {
   try {
     const host = new URL(url).hostname;
-    if (/(^|\.)amazon\.(co\.jp|com)$/.test(host)) return 'amazon';
-    if (/(^|\.)rakuten\.co\.jp$/.test(host)) return 'rakuten';
+    if (/(^|\.)amazon\.(co\.jp|com)$/.test(host) || /^(amzn\.asia|amzn\.to|a\.co)$/.test(host)) {
+      return 'amazon';
+    }
+    if (/(^|\.)rakuten\.co\.jp$/.test(host) || host === 'r10.to') return 'rakuten';
   } catch (e) {
     /* URLでない値は店なしとして扱う */
   }
@@ -395,7 +412,15 @@ function cardHtml(r) {
 
   if (r.rawText) h.push('<div class="raw">' + esc(r.rawText) + '</div>');
   if (r.dupLabel) h.push('<div class="sub warn">' + esc(r.dupLabel) + '</div>');
-  if (r.subLabel) h.push('<div class="sub ' + (r.subActive ? 'on' : 'warn') + '">' + esc(r.subLabel) + '</div>');
+
+  // 発注済: 発注した日・届く予定・注文番号。妻が「頼んだか・いつ届くか」をここで見る。
+  if (tab === 'ordered') {
+    const o = [];
+    if (r.orderedLabel) o.push(esc(r.orderedLabel));
+    if (r.arrivalLabel) o.push('<b>' + esc(r.arrivalLabel) + '</b>');
+    if (r.orderNo) o.push('注文番号 ' + esc(r.orderNo));
+    if (o.length) h.push('<div class="sub on">' + o.join('<br>') + '</div>');
+  }
 
   if (r.market) {
     h.push('<div class="price">');
@@ -453,6 +478,30 @@ function render() {
 }
 
 // ---------------------------------------------------------------------------
+// 定期便（見るだけの別ページ）
+// ---------------------------------------------------------------------------
+
+function renderSubscriptions() {
+  const subs = payload && payload.subscriptions;
+  if (!Array.isArray(subs)) {
+    el('subs-list').innerHTML = '<div class="empty">gas 側が古いようです。最新のコードを push して再デプロイしてください</div>';
+    return;
+  }
+  el('subs-list').innerHTML = subs.length
+    ? subs.map((r) => {
+      const meta = [r.quantity > 1 ? '×' + r.quantity : '', r.cycleLabel, r.mailDate ? 'メール ' + r.mailDate.slice(5).replace('-', '/') : '']
+        .filter((v) => v).map(esc).join(' / ');
+      return '<div class="card sub-card ' + esc(r.status) + '">' +
+        '<div class="name">' + esc(r.name) + '</div>' +
+        '<div class="when">' + esc(r.label) + '</div>' +
+        (r.note ? '<div class="meta">' + esc(r.note) + '</div>' : '') +
+        (meta ? '<div class="meta">' + meta + '</div>' : '') +
+        '</div>';
+    }).join('')
+    : '<div class="empty">まだメールを読んでいません（毎朝5時に更新）</div>';
+}
+
+// ---------------------------------------------------------------------------
 // 読み込みと操作
 // ---------------------------------------------------------------------------
 
@@ -470,6 +519,7 @@ async function load(options) {
     if (cached) {
       payload = cached;
       render();
+      renderSubscriptions();
     } else {
       el('list').innerHTML = '<div class="empty">読み込み中…</div>';
     }
@@ -479,6 +529,7 @@ async function load(options) {
     payload = await apiGet();
     saveCache(payload);
     render();
+    renderSubscriptions();
     if (!opts.quiet) clearMsg();
   } catch (e) {
     if (payload) {
@@ -529,6 +580,23 @@ async function runAction(id, act, button) {
   const body = { action: parts[0], id: id };
   if (parts[1]) body.kind = parts[1];
 
+  if (parts[0] === 'order') {
+    // どちらも任意。必須にすると面倒でボタン自体が押されなくなる（gas の画面と同じ）。
+    // 到着予定日の表記（11/21 など）は gas 側で読み、読めなければ断ってくる。
+    const no = window.prompt('注文番号（空でもOK。Amazonの注文確定画面・メールに出ています）', '');
+    if (no === null) {
+      buttons.forEach((b) => { b.disabled = false; });
+      return;
+    }
+    const arrival = window.prompt('到着予定日（空でもOK。例: 11/21）', '');
+    if (arrival === null) {
+      buttons.forEach((b) => { b.disabled = false; });
+      return;
+    }
+    body.orderNo = no.trim();
+    body.arrivalExpected = arrival.trim();
+  }
+
   if (parts[0] === 'rename') {
     const name = window.prompt('品目名を入れてください');
     if (!name || !name.trim()) {
@@ -555,20 +623,28 @@ async function runAction(id, act, button) {
 // 画面の切り替え
 // ---------------------------------------------------------------------------
 
+function showView(id) {
+  ['view-home', 'view-settings', 'view-subs'].forEach((v) => {
+    el(v).classList.toggle('active', v === id);
+  });
+  window.scrollTo(0, 0);
+}
+
 function openSettings() {
   const s = getSettings();
   el('set-url').value = s.baseUrl;
   el('set-token').value = s.token;
   el('set-msg').hidden = true;
-  el('view-home').classList.remove('active');
-  el('view-settings').classList.add('active');
-  window.scrollTo(0, 0);
+  showView('view-settings');
 }
 
 function closeSettings() {
-  el('view-settings').classList.remove('active');
-  el('view-home').classList.add('active');
-  window.scrollTo(0, 0);
+  showView('view-home');
+}
+
+function openSubscriptions() {
+  renderSubscriptions();
+  showView('view-subs');
 }
 
 function setMsg(kind, text) {
@@ -598,6 +674,8 @@ el('list').addEventListener('click', (ev) => {
 
 el('refresh').onclick = () => load();
 el('open-settings').onclick = openSettings;
+el('open-subs').onclick = openSubscriptions;
+el('close-subs').onclick = () => showView('view-home');
 el('close-settings').onclick = () => {
   closeSettings();
   if (configured()) load();
@@ -659,7 +737,12 @@ el('import-file').addEventListener('change', async (ev) => {
     const data = JSON.parse(await file.text());
     const arr = Array.isArray(data) ? data : data.dismissed;
     if (!Array.isArray(arr)) throw new Error('見送りリストの形式ではありません');
-    const valid = arr.filter((d) => d && d.id && d.item);
+    // 自分で書き出したファイルでも、リンクは http(s) だけ通す（javascript: などを入れない）。
+    const web = (u) => /^https?:\/\//i.test(String(u || ''));
+    const valid = arr.filter((d) => d && d.id && d.item).map((d) => Object.assign({}, d, {
+      links: (Array.isArray(d.links) ? d.links : []).filter((l) => l && web(l.url)),
+      lowestUrl: web(d.lowestUrl) ? d.lowestUrl : '',
+    }));
     const byId = {};
     loadDismissed().forEach((d) => { byId[d.id] = d; });
     valid.forEach((d) => { byId[d.id] = d; });

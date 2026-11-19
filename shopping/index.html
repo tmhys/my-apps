@@ -20,6 +20,7 @@
   <div class="head-row">
     <h1>買い物メモ</h1>
     <div class="head-actions">
+      <button id="open-subs" class="text-btn" type="button">定期便</button>
       <button id="refresh" class="icon-btn" type="button" aria-label="更新">↻</button>
       <button id="open-settings" class="icon-btn" type="button" aria-label="設定">⚙</button>
     </div>
@@ -41,6 +42,20 @@
 
     <div id="list"></div>
     <p class="hint" id="foot"></p>
+  </section>
+
+  <section id="view-subs" class="view">
+    <div class="card">
+      <h2>定期便</h2>
+      <p class="cap">
+        Amazon の「次回の配送を確認する」メールから毎朝作っている一覧です。
+        買い物の依頼とは別で、見るだけです。
+      </p>
+    </div>
+    <div id="subs-list"></div>
+    <div class="card">
+      <button id="close-subs" class="secondary wide" type="button">買い物メモに戻る</button>
+    </div>
   </section>
 
   <section id="view-settings" class="view">
