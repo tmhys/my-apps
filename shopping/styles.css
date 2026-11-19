@@ -73,6 +73,14 @@ main { padding: 16px; max-width: 640px; margin: 0 auto; }
 .price { font-size: 13px; margin-top: 10px; line-height: 1.7; }
 .price .lo { font-weight: 700; }
 .price .at { color: var(--sub); font-size: 11px; }
+/* Amazon / 楽天のリンク有無バッジ */
+.shops { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.shop {
+  font-size: 11px; border: 1px solid var(--line); border-radius: 5px;
+  padding: 3px 8px; color: var(--sub); text-decoration: none;
+}
+.shop.has { color: var(--ok); border-color: var(--ok); background: var(--ok-bg); font-weight: 700; }
+.shop.none { opacity: .55; border-style: dashed; }
 .links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .links a {
   font-size: 12px; color: var(--accent); text-decoration: none;

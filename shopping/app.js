@@ -12,7 +12,18 @@
    - 接続先（URLと合言葉）は localStorage に保存する。キーは 'shopping:' 始まり。
      同じオリジンに他のアプリが同居しているので、接頭辞で分けておく。
    - 取得した内容も localStorage に残し、次回起動時はまずそれを描いてから取り直す。
-     圏外でも「何を頼まれていたか」は見られるようにするため。 */
+     圏外でも「何を頼まれていたか」は見られるようにするため。
+
+   ■このモジュール側で足したもの（gas の画面には無い）
+   - 見送りリスト: 「見送り」にした商品は gas 側で「見送り」状態になり、どのレーン
+     にも出てこなくなる。そのままでは後から見返せないので、見送った控えをこの
+     端末の localStorage（'shopping:dismissed'）に残し、専用タブで見られるように
+     した。「発注待ちに戻す」は gas の遷移（見送り→確認済）が許可されているので、
+     既存の confirm 操作でサーバー側にも反映される。「完全に削除」はこの端末の
+     控えを消す操作（シート側の「見送り」記録自体は残る）。
+   - Amazon / 楽天のリンクバッジ: 検索リンクは全商品に常時付くため、商品ページ
+     への直接リンク（送られたリンク・前回と同じ・最安の商品）があるかどうかを
+     バッジで区別して出す。 */
 
 const STORE_PREFIX = 'shopping:';
 
@@ -21,6 +32,7 @@ const TABS = [
   { key: 'unconfirmed', label: '未確認' },
   { key: 'wishlist', label: '欲しいもの' },
   { key: 'ordered', label: '発注済' },
+  { key: 'dismissed', label: '見送り' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -67,6 +79,89 @@ function saveCache(payload) {
   } catch (e) {
     /* 容量超過などは無視する。次回は取りに行くだけ */
   }
+}
+
+// ---------------------------------------------------------------------------
+// 見送りリスト（この端末に残す控え）
+// ---------------------------------------------------------------------------
+
+function loadDismissed() {
+  try {
+    const raw = localStorage.getItem(STORE_PREFIX + 'dismissed');
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr.filter((d) => d && d.id) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveDismissed(list) {
+  try {
+    localStorage.setItem(STORE_PREFIX + 'dismissed', JSON.stringify(list));
+  } catch (e) {
+    /* 書けない環境では控えが残らないだけ */
+  }
+}
+
+/** 見送った商品の控えを残す。カードの描画に使う項目だけを写す。 */
+function rememberDismissed(row) {
+  if (!row || !row.id) return;
+  const snap = {
+    id: row.id,
+    item: row.item,
+    quantity: row.quantity,
+    unit: row.unit,
+    kind: row.kind,
+    brandHint: row.brandHint,
+    note: row.note,
+    rawText: row.rawText,
+    speaker: row.speaker,
+    receivedAt: row.receivedAt,
+    lastBought: row.lastBought,
+    links: row.links || [],
+    lowestUrl: row.lowestUrl || '',
+    dismissedAt: new Date().toLocaleString('ja-JP'),
+  };
+  const list = loadDismissed().filter((d) => d.id !== row.id);
+  list.unshift(snap);
+  saveDismissed(list);
+}
+
+function forgetDismissed(id) {
+  saveDismissed(loadDismissed().filter((d) => d.id !== id));
+}
+
+/** いまサーバー側のどこかのレーンに居る id 集合。 */
+function laneIds() {
+  const ids = {};
+  const list = (payload && payload.list) || {};
+  Object.keys(list).forEach((k) => {
+    (list[k] || []).forEach((r) => { ids[r.id] = true; });
+  });
+  return ids;
+}
+
+/**
+ * 表示用の見送りリスト。どこかのレーンに戻っているもの（他の画面で
+ * 戻された等）は控えから落とす。控えが嘘にならないようにするため。
+ */
+function currentDismissed() {
+  const ids = laneIds();
+  const list = loadDismissed();
+  const kept = list.filter((d) => !ids[d.id]);
+  if (kept.length !== list.length) saveDismissed(kept);
+  return kept;
+}
+
+/** 現在の一覧から id で1件引く。 */
+function findRow(id) {
+  const list = (payload && payload.list) || {};
+  const keys = Object.keys(list);
+  for (let i = 0; i < keys.length; i++) {
+    const hit = (list[keys[i]] || []).find((r) => r.id === id);
+    if (hit) return hit;
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -215,6 +310,64 @@ function clearMsg() {
 let payload = null;
 let tab = 'waiting';
 
+/** URLのホストから店を判定する。判定できなければ ''。 */
+function shopOf(url) {
+  try {
+    const host = new URL(url).hostname;
+    if (/(^|\.)amazon\.(co\.jp|com)$/.test(host)) return 'amazon';
+    if (/(^|\.)rakuten\.co\.jp$/.test(host)) return 'rakuten';
+  } catch (e) {
+    /* URLでない値は店なしとして扱う */
+  }
+  return '';
+}
+
+/**
+ * Amazon / 楽天のリンクの有無をバッジで出す。
+ *
+ * gas 側は検索リンク（ラベルが 'Amazon' / '楽天'）を全商品に常時付けるので、
+ * 「リンクがある」だけでは意味が無い。ここで分けるのは商品ページへの直接
+ * リンク（送られたリンク・前回と同じ・最安の商品のURL）があるかどうか。
+ *   直接リンクあり → 「商品リンクあり」（緑）
+ *   検索リンクだけ → 「検索のみ」
+ *   どちらも無い   → 「リンクなし」（薄く破線）
+ * 発注済タブは従来どおりリンクを出さない画面なので、バッジも飛べない表示だけにする。
+ */
+function shopBadgesHtml(r) {
+  const direct = {};
+  const search = {};
+  (r.links || []).forEach((l) => {
+    if (l.label === 'Amazon') search.amazon = l.url;
+    else if (l.label === '楽天') search.rakuten = l.url;
+    else {
+      const shop = shopOf(l.url);
+      if (shop && !direct[shop]) direct[shop] = l.url;
+    }
+  });
+  const lowShop = shopOf(r.lowestUrl);
+  if (lowShop && !direct[lowShop]) direct[lowShop] = r.lowestUrl;
+
+  const clickable = tab !== 'ordered';
+  const h = ['<div class="shops">'];
+  [['amazon', 'Amazon'], ['rakuten', '楽天']].forEach((s) => {
+    const key = s[0];
+    const name = s[1];
+    if (direct[key]) {
+      h.push(clickable
+        ? '<a class="shop has" target="_blank" rel="noopener" href="' + esc(direct[key]) + '">' + name + ' 商品リンクあり</a>'
+        : '<span class="shop has">' + name + ' 商品リンクあり</span>');
+    } else if (search[key]) {
+      h.push(clickable
+        ? '<a class="shop search" target="_blank" rel="noopener" href="' + esc(search[key]) + '">' + name + ' 検索のみ</a>'
+        : '<span class="shop search">' + name + ' 検索のみ</span>');
+    } else {
+      h.push('<span class="shop none">' + name + ' リンクなし</span>');
+    }
+  });
+  h.push('</div>');
+  return h.join('');
+}
+
 function cardHtml(r) {
   const warn = r.duplicateWarn || r.overdue;
   const h = ['<div class="card' + (warn ? ' warn' : '') + '" data-id="' + esc(r.id) + '">'];
@@ -235,7 +388,10 @@ function cardHtml(r) {
   if (r.stockSignal) meta.push('在庫: ' + esc(r.stockSignal));
   if (r.note) meta.push(esc(r.note));
   meta.push(esc(r.speaker) + ' ' + esc(r.receivedAt));
+  if (tab === 'dismissed' && r.dismissedAt) meta.push('見送り: ' + esc(r.dismissedAt));
   h.push('<div class="meta">' + meta.join('<br>') + '</div>');
+
+  h.push(shopBadgesHtml(r));
 
   if (r.rawText) h.push('<div class="raw">' + esc(r.rawText) + '</div>');
   if (r.dupLabel) h.push('<div class="sub warn">' + esc(r.dupLabel) + '</div>');
@@ -255,13 +411,18 @@ function cardHtml(r) {
       links.push('<a target="_blank" rel="noopener" href="' + esc(r.lowestUrl) + '">最安の商品</a>');
     }
     (r.links || []).forEach((l) => {
+      // Amazon / 楽天の検索リンクはバッジ側で出すので、ここでは繰り返さない。
+      if (l.label === 'Amazon' || l.label === '楽天') return;
       links.push('<a target="_blank" rel="noopener" href="' + esc(l.url) + '">' + esc(l.label) + '</a>');
     });
     if (links.length) h.push('<div class="links">' + links.join('') + '</div>');
   }
 
   h.push('<div class="acts">');
-  actionsFor(tab, r).forEach((a) => {
+  const acts = tab === 'dismissed'
+    ? [['restore', '発注待ちに戻す', 'go'], ['purge', '完全に削除', '']]
+    : actionsFor(tab, r);
+  acts.forEach((a) => {
     h.push('<button class="' + a[2] + '" data-act="' + esc(a[0]) + '">' + esc(a[1]) + '</button>');
   });
   h.push('</div></div>');
@@ -271,20 +432,24 @@ function cardHtml(r) {
 
 function render() {
   const list = (payload && payload.list) || {};
+  const dismissed = currentDismissed();
 
   TABS.forEach((t) => {
     const btn = el('tabs').querySelector('[data-tab="' + t.key + '"]');
+    if (!btn) return;
     btn.className = t.key === tab ? 'on' : '';
-    const rows = list[t.key] || [];
+    const rows = t.key === 'dismissed' ? dismissed : (list[t.key] || []);
     btn.querySelector('.n').textContent = rows.length ? rows.length : '';
   });
 
-  const rows = list[tab] || [];
+  const rows = tab === 'dismissed' ? dismissed : (list[tab] || []);
   el('list').innerHTML = rows.length
     ? rows.map(cardHtml).join('')
     : '<div class="empty">ここは空です</div>';
 
-  el('foot').textContent = payload && payload.updatedAt ? payload.updatedAt + ' 時点' : '';
+  el('foot').textContent = tab === 'dismissed'
+    ? 'この端末で見送った控えです。「発注待ちに戻す」はサーバーにも反映されます'
+    : (payload && payload.updatedAt ? payload.updatedAt + ' 時点' : '');
 }
 
 // ---------------------------------------------------------------------------
@@ -330,6 +495,35 @@ async function runAction(id, act, button) {
   const buttons = card.querySelectorAll('button');
   buttons.forEach((b) => { b.disabled = true; });
 
+  // 見送りリストの中の操作。サーバーへ行くのは「戻す」だけ。
+  if (tab === 'dismissed') {
+    if (act === 'purge') {
+      if (!window.confirm('見送りリストから完全に削除しますか？')) {
+        buttons.forEach((b) => { b.disabled = false; });
+        return;
+      }
+      forgetDismissed(id);
+      render();
+      show('ok', '見送りリストから削除しました');
+      return;
+    }
+    if (act === 'restore') {
+      try {
+        // gas の遷移表で「見送り → 確認済（発注待ち）」が許可されている。
+        const res = await apiPost({ action: 'confirm', id: id });
+        forgetDismissed(id);
+        show('ok', res.message || '発注待ちに戻しました');
+        await load({ quiet: true });
+      } catch (e) {
+        show('ng', e.message);
+        buttons.forEach((b) => { b.disabled = false; });
+      }
+      return;
+    }
+    buttons.forEach((b) => { b.disabled = false; });
+    return;
+  }
+
   // 'register:必需品' のように区分を後ろに付けている。gas 側は action と kind で受ける。
   const parts = act.split(':');
   const body = { action: parts[0], id: id };
@@ -346,6 +540,8 @@ async function runAction(id, act, button) {
 
   try {
     const res = await apiPost(body);
+    // 見送った控えは、取り直しで payload が差し替わる前に写しておく。
+    if (parts[0] === 'reject') rememberDismissed(findRow(id));
     show('ok', res.message || '更新しました');
     // stay が立っている操作（相場調べなど）はレーンが動かない。どちらにせよ取り直す。
     await load({ quiet: true });
@@ -433,5 +629,46 @@ el('save-settings').onclick = () => {
   payload = null;
   load();
 };
+
+// 見送りリストの書き出し／読み込み。このモジュールが端末に持つのは
+// 接続設定と取得キャッシュと見送りの控えだけで、書き出すのは控えのみ
+// （接続設定には合言葉が含まれるので書き出しには含めない）。
+el('export-dismissed').onclick = () => {
+  const data = {
+    type: 'my-apps-shopping',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    dismissed: loadDismissed(),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'shopping-dismissed.json';
+  a.click();
+  window.setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  setMsg('ok', '見送りリストを書き出しました（' + data.dismissed.length + '件）。');
+};
+
+el('import-dismissed').onclick = () => el('import-file').click();
+
+el('import-file').addEventListener('change', async (ev) => {
+  const file = ev.target.files[0];
+  ev.target.value = '';
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    const arr = Array.isArray(data) ? data : data.dismissed;
+    if (!Array.isArray(arr)) throw new Error('見送りリストの形式ではありません');
+    const valid = arr.filter((d) => d && d.id && d.item);
+    const byId = {};
+    loadDismissed().forEach((d) => { byId[d.id] = d; });
+    valid.forEach((d) => { byId[d.id] = d; });
+    saveDismissed(Object.keys(byId).map((k) => byId[k]));
+    render();
+    setMsg('ok', '見送りリストを読み込みました（' + valid.length + '件）。');
+  } catch (e) {
+    setMsg('ng', '読み込めませんでした: ' + e.message);
+  }
+});
 
 load();

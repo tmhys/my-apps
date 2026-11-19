@@ -36,6 +36,7 @@
       <button data-tab="unconfirmed" type="button">未確認<span class="n"></span></button>
       <button data-tab="wishlist" type="button">欲しいもの<span class="n"></span></button>
       <button data-tab="ordered" type="button">発注済<span class="n"></span></button>
+      <button data-tab="dismissed" type="button">見送り<span class="n"></span></button>
     </div>
 
     <div id="list"></div>
@@ -63,6 +64,19 @@
         この2つは端末のブラウザ内（localStorage）にだけ保存され、
         このリポジトリにもどこにも送信されません。
       </p>
+    </div>
+    <div class="card">
+      <h2>見送りリスト</h2>
+      <p class="cap">
+        「見送り」にした商品の控えは、この端末の中にだけ残ります。
+        端末を替えるときなどに、JSONで書き出し／読み込みができます
+        （接続設定は含まれません）。
+      </p>
+      <div class="row">
+        <button id="export-dismissed" class="secondary" type="button">書き出し</button>
+        <button id="import-dismissed" class="secondary" type="button">読み込み</button>
+      </div>
+      <input id="import-file" type="file" accept="application/json,.json" hidden>
     </div>
     <div class="card">
       <button id="close-settings" class="secondary wide" type="button">閉じる</button>
