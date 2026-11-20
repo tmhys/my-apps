@@ -37,7 +37,7 @@
       </div>
       <div id="lesson-list"></div>
       <button id="btn-review" class="primary" type="button">復習する（弱いカードから10問）</button>
-      <p class="hint">レッスンは5語ずつ。解くほど各カードの習熟度（ボックス）が上がり、高いカードほど対比・応用問題が増えます。ハートは間違えると減り、翌日に回復します。</p>
+      <p class="hint">レッスンは5語ずつ。解くほど各カードの習熟度（ボックス）が上がり、高いカードほど対比・応用問題が増えます。ハートはレッスンで間違えると減り、翌日に回復します。復習はハートなしでいつでもできます。</p>
     </div>
   </section>
 
@@ -108,5 +108,8 @@
 
 <script src="./data.js"></script>
 <script src="./app.js"></script>
+<script src="../habit.js"></script>
+<script src="../backup.js"></script>
+<script>window.GijutsushiBackup.nagOnce();</script>
 </body>
 </html>

@@ -194,7 +194,9 @@ function startLesson(idx) {
 /* ---------- クイズ実行 ---------- */
 let quiz = null;
 function startQuiz(questions, lessonIdx, label) {
-  if (S.hearts <= 0) { alert('ハートがありません。ハートは翌日に回復します。'); return; }
+  // ハートが要るのはレッスンだけ。復習はハートが0でもでき、間違えても減らない
+  // （ゲームの仕掛けで勉強そのものが止まらないように）。
+  if (lessonIdx != null && S.hearts <= 0) { alert('ハートがありません（翌日に回復します）。今日は「復習する」ならハートなしで続けられます。'); return; }
   quiz = { queue: questions, idx: 0, correct: 0, xpEarned: 0, lessonIdx, label, answered: false };
   document.getElementById('quiz-main').hidden = false;
   document.getElementById('quiz-done').hidden = true;
@@ -237,11 +239,11 @@ document.getElementById('q-choices').addEventListener('click', e => {
     S.correct[c.id] = (S.correct[c.id] || 0) + 1;
     S.boxes[c.id] = Math.min(5, box(c.id) + 1);
   } else {
-    S.hearts = Math.max(0, S.hearts - 1);
+    if (quiz.lessonIdx != null) S.hearts = Math.max(0, S.hearts - 1);
     S.boxes[c.id] = Math.max(0, box(c.id) - 1);
   }
   persist();
-  document.getElementById('q-verdict').textContent = ok ? '⭕ 正解！ +10 XP' : `❌ 不正解（ハート ${S.hearts}）`;
+  document.getElementById('q-verdict').textContent = ok ? '⭕ 正解！ +10 XP' : quiz.lessonIdx != null ? `❌ 不正解（ハート ${S.hearts}）` : '❌ 不正解（復習なのでハートは減りません）';
   document.getElementById('q-explain').textContent = `${c.title}\n${c.body}\n\n関連：${c.related} ／ 出題：${c.exam}`;
   document.getElementById('q-feedback').hidden = false;
   renderStats();
@@ -272,6 +274,7 @@ function finishQuiz() {
     `${esc(quiz.label)} 完了！<br>${quiz.queue.length}問中 ${quiz.correct}問正解 ／ +${quiz.xpEarned} XP<br>今日の合計 ${S.todayXp} XP（目標 ${DAILY_GOAL} XP）`;
   quiz = null;
   renderStats();
+  if (window.GijutsushiHabit) window.GijutsushiHabit.markStudied();
 }
 
 /* ---------- カード一覧 ---------- */

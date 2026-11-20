@@ -33,6 +33,7 @@
         <select id="f-subject" aria-label="科目">
           <option value="">科目：すべて</option>
           <option value="I">必須科目 I</option>
+          <option value="II-1">選択 II-1（専門知識・練習問題）</option>
           <option value="II-2">選択 II-2（応用）</option>
           <option value="III">選択 III（問題解決）</option>
         </select>
@@ -44,7 +45,7 @@
           <option value="4">令和4年度</option>
         </select>
       </div>
-      <button id="btn-random" type="button" class="primary sub-btn">未実施の問題からランダムに1問</button>
+      <button id="btn-random" type="button" class="primary sub-btn">未実施の問題からランダムに1問（絞り込みに従う）</button>
       <div id="bank-list"></div>
     </div>
   </section>
@@ -126,7 +127,11 @@
   <button data-view="view-records">記録</button>
 </nav>
 
+<script src="../pakuringo/data.js"></script>
 <script src="./data.js"></script>
 <script src="./app.js"></script>
+<script src="../habit.js"></script>
+<script src="../backup.js"></script>
+<script>window.GijutsushiBackup.nagOnce();</script>
 </body>
 </html>
