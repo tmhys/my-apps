@@ -36,15 +36,28 @@
     <div class="mode-emoji">✏️</div>
     <div class="mode-body">
       <div class="mode-name">論文骨子ドリル</div>
-      <div class="mode-desc">過去問24問（令和4〜7年）で論文の骨子を作る練習。全問に回答例つき。</div>
+      <div class="mode-desc">過去問24問（令和4〜7年の必須I・II-2・III）＋II-1の練習問題31問で、論文の骨子を作る練習。全問に回答例・要点つき。</div>
       <div class="mode-stat" id="stat-ronbun">読み込み中…</div>
     </div>
     <div class="mode-arrow">›</div>
   </a>
 
+  <section class="backup-card">
+    <div id="backup-warn" class="backup-warn" hidden></div>
+    <div class="backup-row">
+      <button id="btn-backup" type="button" class="backup-btn">💾 まとめてバックアップ</button>
+      <label class="backup-sub">復元
+        <input type="file" id="f-restore" accept="application/json,.json" hidden>
+      </label>
+    </div>
+    <p id="backup-last" class="backup-last"></p>
+    <p class="hint">キーワード学習と論文骨子を1つのファイルにまとめ、共有メニューから Obsidian・Google ドライブなどに保存します。7日以上あいて記録が増えていると、ここと各画面でお知らせします。</p>
+  </section>
+
   <p class="hint">記録はどちらもこの端末の中（localStorage）に保存されます。骨子の添削は、ドリル内の「添削用にコピー」で骨子をコピーして、Muse のチャットに貼ってください。<br>レッスンを1回終える／骨子を1本保存すると、習慣グリッドの「📘 技術士勉強」に今日のチェックが自動で付きます（1日1回。習慣グリッドの⚙️で記録の設定が済んでいる端末のみ）。</p>
 </main>
 
+<script src="./backup.js"></script>
 <script src="./habit.js"></script>
 <script>
 (function () {
@@ -58,6 +71,34 @@
   } else {
     el.textContent = 'まだ記録がありません（スペース版の進捗は初回に引き継がれます）';
   }
+  var B = window.GijutsushiBackup;
+  function renderBackup() {
+    var msg = B.status();
+    var w = document.getElementById('backup-warn');
+    w.hidden = !msg;
+    w.textContent = msg ? '⚠️ ' + msg + '。記録はこの端末にしかないので、保存しておきましょう。' : '';
+    var l = B.last();
+    document.getElementById('backup-last').textContent = l
+      ? '最後のバックアップ: ' + new Date(l.at).toLocaleString('ja-JP', { dateStyle: 'medium', timeStyle: 'short' })
+      : 'まだバックアップしていません';
+  }
+  document.getElementById('btn-backup').addEventListener('click', function () {
+    B.backupNow().then(function (r) {
+      if (r !== 'cancelled') renderBackup();
+    });
+  });
+  document.getElementById('f-restore').addEventListener('change', function (e) {
+    var file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!confirm('この端末の記録をファイルの内容で置き換えます。よろしいですか？')) return;
+    file.text().then(function (t) {
+      try { alert('復元しました（' + B.restore(t) + '）'); location.reload(); }
+      catch (err) { alert('読み込めませんでした: ' + err.message); }
+    });
+  });
+  renderBackup();
+
   var o = ls('gijutsushi:outlines');
   document.getElementById('stat-ronbun').textContent =
     '保存した骨子 ' + (Array.isArray(o) ? o.length : 0) + '本';

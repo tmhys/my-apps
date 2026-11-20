@@ -30,3 +30,21 @@ main { padding: 16px; max-width: 640px; margin: 0 auto; }
 .mode-stat { font-size: 12.5px; color: var(--accent); font-weight: 700; margin-top: 6px; }
 .mode-arrow { font-size: 26px; color: var(--sub); flex: none; }
 .hint { font-size: 12px; color: var(--sub); line-height: 1.8; margin-top: 6px; }
+.backup-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  padding: 14px 16px; margin-bottom: 14px;
+}
+.backup-warn {
+  background: #fff7e0; border: 1px solid #e9cf7a; color: #5a4300;
+  border-radius: 10px; padding: 8px 10px; font-size: 13px; line-height: 1.6; margin-bottom: 10px;
+}
+.backup-row { display: flex; gap: 8px; }
+.backup-btn {
+  flex: 1; font: inherit; font-weight: 700; color: #fff; background: var(--accent);
+  border: 1px solid var(--accent); border-radius: 10px; padding: 11px 14px; cursor: pointer;
+}
+.backup-sub {
+  flex: none; font-size: 14px; color: var(--ink); background: var(--card);
+  border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; cursor: pointer;
+}
+.backup-last { font-size: 12.5px; color: var(--sub); margin: 8px 0 0; }

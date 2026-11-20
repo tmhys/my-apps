@@ -5,6 +5,20 @@
 const LS_KEY = 'gijutsushi:outlines';
 const VIEWPOINTS = ['', '技術', '経済', '社会', '環境', '安全', '人材', '持続可能性', '制度', 'その他'];
 
+/* II-1（専門知識）は過去問の原文を持っていないので、キーワード学習のカードのうち
+出題区分に II-1 を含むものから「練習問題」を作る（過去問ではないと画面に明記する）。
+問い方は II-1 の定番の形（概要・原理を説明し、適用時の留意点を述べる）に揃える。 */
+if (typeof CARDS !== 'undefined') {
+CARDS.filter(c => /II-1/.test(c.exam)).forEach(c => {
+const id = 'P-II1-' + c.id;
+QUESTIONS.push({
+id, year: null, subject: 'II-1', code: 'II-1', practice: true, title: c.title,
+text: `【練習問題（過去問ではありません）】\n${c.title}について、その概要（定義・原理）と特徴を説明せよ。また、機械製品の設計に適用する際の留意点や課題を述べよ。\n\n（答案用紙1枚＝600字程度を想定）`,
+});
+ANSWERS[id] = `要点（キーワード学習のカードより）\n${c.body}\n\n関連：${c.related}\n出題区分の目安：${c.exam}`;
+});
+}
+
 let outlines = load();
 let currentQid = null;
 let editingId = null;
@@ -22,7 +36,7 @@ try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]');} catch (e) { retu
 function persist() { localStorage.setItem(LS_KEY, JSON.stringify(outlines));}
 function qById(id) { return QUESTIONS.find(q => q.id === id);}
 function subjectName(s) { return s === 'I'? '必須I': s;}
-function qLabel(q) { return `令和${q.year}年度 ${subjectName(q.subject)} ${q.code.replace(/^(I|II-2|III)-/, m => m)}`;}
+function qLabel(q) { if (q.practice) return `II-1 練習「${q.title}」`; return `令和${q.year}年度 ${subjectName(q.subject)} ${q.code.replace(/^(I|II-2|III)-/, m => m)}`;}
 function esc(s) {
 return String(s == null? '': s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 }
@@ -34,6 +48,10 @@ document.querySelectorAll('.tabbar button').forEach(b => {
 b.addEventListener('click', () => showView(b.dataset.view));
 });
 function showView(id) {
+if (id !== 'view-drill' && timerRunning) {
+stopTimer();
+document.getElementById('timer-toggle').textContent = '再開';
+}
 document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === id));
 document.querySelectorAll('.tabbar button').forEach(b => b.classList.toggle('active', b.dataset.view === id));
 if (id === 'view-records') renderRecords();
@@ -45,9 +63,14 @@ const bankList = document.getElementById('bank-list');
 document.getElementById('f-subject').addEventListener('change', renderBank);
 document.getElementById('f-year').addEventListener('change', renderBank);
 document.getElementById('btn-random').addEventListener('click', () => {
+// 絞り込み中の科目・年度の中から選ぶ（II-1 の練習問題が多いので、すべてのときは過去問だけ）
+const fs = document.getElementById('f-subject').value;
+const fy = document.getElementById('f-year').value;
+const base = QUESTIONS.filter(q => (fs? q.subject === fs:!q.practice) && (!fy || String(q.year) === fy));
+if (!base.length) return;
 const done = new Set(outlines.map(o => o.qid));
-const pool = QUESTIONS.filter(q =>!done.has(q.id));
-const pickFrom = pool.length? pool: QUESTIONS;
+const pool = base.filter(q =>!done.has(q.id));
+const pickFrom = pool.length? pool: base;
 const q = pickFrom[Math.floor(Math.random() * pickFrom.length)];
 startDrill(q.id);
 });
@@ -96,7 +119,7 @@ mostImportant = 1;
 document.getElementById('drill-empty').hidden = true;
 document.getElementById('drill-main').hidden = false;
 document.getElementById('drill-title').textContent = qLabel(q) + (record? '（編集中）': '');
-document.getElementById('drill-badge').textContent = q.subject === 'II-2'? '応用型': '課題解決型';
+document.getElementById('drill-badge').textContent = q.subject === 'II-1'? '専門知識': q.subject === 'II-2'? '応用型': '課題解決型';
 document.getElementById('drill-qtext').textContent = q.text;
 document.getElementById('drill-answer').hidden = true;
 buildForm(q);
@@ -107,6 +130,23 @@ showView('view-drill');
 }
 
 function buildForm(q) {
+if (q.subject === 'II-1') {
+drillForm.innerHTML = `
+<label class="field">定義・原理（何か、なぜそうなるか）
+<textarea id="d-def"></textarea>
+</label>
+<label class="field">特徴・メリット（従来との違い）
+<textarea id="d-feat"></textarea>
+</label>
+<label class="field">設計に適用する際の留意点・課題
+<textarea id="d-note"></textarea>
+</label>
+<label class="field">適用例・実務での使いどころ
+<textarea id="d-case"></textarea>
+</label>
+<p class="hint" id="d-chars"></p>`;
+return;
+}
 if (q.subject === 'II-2') {
 drillForm.innerHTML = `
 <label class="field">調査・検討すべき事項
@@ -189,6 +229,9 @@ function val(id) { const el = document.getElementById(id); return el? el.value.t
 
 function collectFields() {
 const q = qById(currentQid);
+if (q.subject === 'II-1') {
+return { def: val('d-def'), feat: val('d-feat'), note: val('d-note'), cas: val('d-case')};
+}
 if (q.subject === 'II-2') {
 return {
 survey: val('d-survey'),
@@ -213,6 +256,13 @@ return f;
 
 function fillForm(f) {
 const q = qById(currentQid);
+if (q.subject === 'II-1') {
+document.getElementById('d-def').value = f.def || '';
+document.getElementById('d-feat').value = f.feat || '';
+document.getElementById('d-note').value = f.note || '';
+document.getElementById('d-case').value = f.cas || '';
+return;
+}
 if (q.subject === 'II-2') {
 document.getElementById('d-survey').value = f.survey || '';
 const wrap = document.getElementById('d-steps');
@@ -240,6 +290,19 @@ if (q.subject === 'I' && document.getElementById('d-ethics')) document.getElemen
 function runChecks(f) {
 const q = qById(currentQid);
 const checks = [];
+if (q.subject === 'II-1') {
+const all = [f.def, f.feat, f.note, f.cas].join('');
+const n = all.replace(/\s/g, '').length;
+const el = document.getElementById('d-chars');
+if (el) el.textContent = `合計 ${n}字（目安 500〜600字）`;
+checks.push({ label: '4項目すべて埋まっている', ok: !!(f.def && f.feat && f.note && f.cas)});
+checks.push({ label: '合計500字以上（答案用紙1枚の目安）', ok: n >= 500});
+checks.push({ label: '600字を大きく超えていない（700字以下）', ok: n > 0 && n <= 700});
+const others = KEYWORDS.filter(k => k && k !== q.title && all.includes(k));
+checks.push({ label: '問われた用語以外の専門用語を2つ以上使っている', ok: others.length >= 2});
+checks.push({ label: '留意点が2文以上で書かれている', ok: (f.note.match(/。/g) || []).length >= 2});
+return checks;
+}
 if (q.subject === 'II-2') {
 const stepsOk = f.steps.filter(s => s.text);
 checks.push({ label: '全欄が埋まっている', ok:!!(f.survey && stepsOk.length && f.coord)});
@@ -335,6 +398,8 @@ document.getElementById('timer-minutes').addEventListener('change', resetTimer);
 /* ---------- 保存・コピー・回答例 ---------- */
 document.getElementById('btn-save-outline').addEventListener('click', () => {
 if (!currentQid) return;
+stopTimer();
+document.getElementById('timer-toggle').textContent = '再開';
 const fields = collectFields();
 const checks = runChecks(fields);
 const rec = {
@@ -361,7 +426,9 @@ function outlineToText(rec) {
 const q = qById(rec.qid);
 const f = rec.fields;
 const lines = [`${qLabel(q)}`, `${rec.minutes}分`, ''];
-if (q.subject === 'II-2') {
+if (q.subject === 'II-1') {
+lines.push('■定義・原理', f.def || '', '', '■特徴・メリット', f.feat || '', '', '■設計に適用する際の留意点・課題', f.note || '', '', '■適用例', f.cas || '');
+} else if (q.subject === 'II-2') {
 lines.push('■調査・検討すべき事項', f.survey || '', '', '■業務の手順と留意点・工夫');
 (f.steps || []).forEach((s, i) => lines.push(`${i + 1}. ${s.text}`, ` 留意点: ${s.note}`));
 lines.push('', '■関係者との調整方策', f.coord || '');
@@ -402,9 +469,9 @@ document.getElementById('btn-show-answer').textContent = box.hidden? '回答例�
 /* ---------- 記録 ---------- */
 function renderRecords() {
 const sum = document.getElementById('records-summary');
-const by = { I: 0, 'II-2': 0, III: 0};
+const by = { I: 0, 'II-1': 0, 'II-2': 0, III: 0};
 outlines.forEach(o => { const q = qById(o.qid); if (q) by[q.subject]++;});
-sum.textContent = `合計 ${outlines.length}本（必須I ${by.I} / II-2 ${by['II-2']} / III ${by.III}）`;
+sum.textContent = `合計 ${outlines.length}本（必須I ${by.I} / II-1 ${by['II-1']} / II-2 ${by['II-2']} / III ${by.III}）`;
 const list = document.getElementById('records-list');
 const sorted = [...outlines].sort((a, b) => b.id - a.id);
 list.innerHTML = sorted.map(o => {
