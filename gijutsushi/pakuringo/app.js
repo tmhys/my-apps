@@ -272,6 +272,7 @@ function finishQuiz() {
     `${esc(quiz.label)} 完了！<br>${quiz.queue.length}問中 ${quiz.correct}問正解 ／ +${quiz.xpEarned} XP<br>今日の合計 ${S.todayXp} XP（目標 ${DAILY_GOAL} XP）`;
   quiz = null;
   renderStats();
+  if (window.GijutsushiHabit) window.GijutsushiHabit.markStudied();
 }
 
 /* ---------- カード一覧 ---------- */

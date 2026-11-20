@@ -13,7 +13,7 @@
  *   だったので、クエリ違いの応答を取り違える（先月の金額が出る）恐れがあった。
  *   自分のオリジン以外は触らない。
  */
-const CACHE = 'my-apps-v21';
+const CACHE = 'my-apps-v22';
 const ASSETS = [
   './',
   './index.html',
@@ -38,6 +38,7 @@ const ASSETS = [
   './gijutsushi/',
   './gijutsushi/index.html',
   './gijutsushi/hub.css',
+  './gijutsushi/habit.js',
   './gijutsushi/ronbun/',
   './gijutsushi/ronbun/index.html',
   './gijutsushi/ronbun/styles.css',
@@ -65,9 +66,9 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
 
-  // 自分のオリジンのファイルだけを扱う。GAS への問い合わせには手を出さない。
-  const url = new URL(e.request.url);
-  if (url.origin !== self.location.origin) return;
+  // 自分のスコープ（/my-apps/）のファイルだけを扱う。GAS への問い合わせには手を出さない。
+  // 同じ tmhys.github.io でも他のリポジトリ（habit-pwa の habits.json 等）は素通しする。
+  if (!e.request.url.startsWith(self.registration.scope)) return;
 
   e.respondWith(
     fetch(e.request)

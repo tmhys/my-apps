@@ -42,9 +42,10 @@
     <div class="mode-arrow">›</div>
   </a>
 
-  <p class="hint">記録はどちらもこの端末の中（localStorage）に保存されます。骨子の添削は、ドリル内の「添削用にコピー」で骨子をコピーして、Muse のチャットに貼ってください。</p>
+  <p class="hint">記録はどちらもこの端末の中（localStorage）に保存されます。骨子の添削は、ドリル内の「添削用にコピー」で骨子をコピーして、Muse のチャットに貼ってください。<br>レッスンを1回終える／骨子を1本保存すると、習慣グリッドの「📘 技術士勉強」に今日のチェックが自動で付きます（1日1回。習慣グリッドの⚙️で記録の設定が済んでいる端末のみ）。</p>
 </main>
 
+<script src="./habit.js"></script>
 <script>
 (function () {
   function ls(key) { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; } }

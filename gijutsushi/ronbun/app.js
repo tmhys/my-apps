@@ -192,7 +192,7 @@ const q = qById(currentQid);
 if (q.subject === 'II-2') {
 return {
 survey: val('d-survey'),
-steps: Array.from(document.querySelectorAll('#d-steps.step-block')).map(b => ({
+steps: Array.from(document.querySelectorAll('#d-steps .step-block')).map(b => ({
 text: b.querySelector('.step-text').value.trim(),
 note: b.querySelector('.step-note').value.trim(),
 })),
@@ -204,7 +204,7 @@ target: val('d-target'),
 issues: [1, 2, 3].map(i => ({ vp: val(`d-vp-${i}`), text: val(`d-issue-${i}`)})),
 most: mostImportant,
 reason: val('d-reason'),
-solutions: Array.from(document.querySelectorAll('#d-solutions.sol-text')).map(t => t.value.trim()).filter(Boolean),
+solutions: Array.from(document.querySelectorAll('#d-solutions .sol-text')).map(t => t.value.trim()).filter(Boolean),
 risks: val('d-risks'),
 };
 if (q.subject === 'I') f.ethics = val('d-ethics');
@@ -287,7 +287,7 @@ kwList.addEventListener('click', e => {
 const chip = e.target.closest('.kw-chip');
 if (!chip) return;
 const t = lastFocus && document.contains(lastFocus)? lastFocus:
-document.querySelector('#d-solutions.sol-text') || document.querySelector('#drill-form textarea');
+document.querySelector('#d-solutions .sol-text') || document.querySelector('#drill-form textarea');
 if (!t) return;
 const start = t.selectionStart || t.value.length;
 t.value = t.value.slice(0, start) + chip.textContent + t.value.slice(t.selectionEnd || start);
@@ -354,6 +354,7 @@ persist();
 editingId = null;
 renderBank();
 showView('view-records');
+if (window.GijutsushiHabit) window.GijutsushiHabit.markStudied();
 });
 
 function outlineToText(rec) {
