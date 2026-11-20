@@ -15,7 +15,9 @@ QUESTIONS.push({
 id, year: null, subject: 'II-1', code: 'II-1', practice: true, title: c.title,
 text: `【練習問題（過去問ではありません）】\n${c.title}について、その概要（定義・原理）と特徴を説明せよ。また、機械製品の設計に適用する際の留意点や課題を述べよ。\n\n（答案用紙1枚＝600字程度を想定）`,
 });
-ANSWERS[id] = `要点（キーワード学習のカードより）\n${c.body}\n\n関連：${c.related}\n出題区分の目安：${c.exam}`;
+const memo = `要点（キーワード学習のカードより）\n${c.body}\n\n関連：${c.related}\n出題区分の目安：${c.exam}`;
+const model = typeof II1_ANSWERS !== 'undefined' && II1_ANSWERS[c.id];
+ANSWERS[id] = model? `回答例（答案用紙1枚・600字程度を想定）\n${model}\n\n――――――――\n${memo}`: memo;
 });
 }
 
