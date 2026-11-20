@@ -54,6 +54,8 @@ if (id !== 'view-drill' && timerRunning) {
 stopTimer();
 document.getElementById('timer-toggle').textContent = '再開';
 }
+// 戻る操作で過去問バンクに戻す（ドリル中に戻ってもモジュールから抜けない。../../nav.js）
+showView = MyNav.views('view-bank', showView);
 document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === id));
 document.querySelectorAll('.tabbar button').forEach(b => b.classList.toggle('active', b.dataset.view === id));
 if (id === 'view-records') renderRecords();

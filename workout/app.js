@@ -520,6 +520,15 @@ function show(viewId) {
   if (viewId === 'view-settings') renderSettings();
   window.scrollTo(0, 0);
 }
+// 戻る操作でホームに戻す（../nav.js）。記録の入力中は確かめてから戻る。
+show = MyNav.views('view-home', show, {
+  canLeave(from) {
+    if (from !== 'view-editor') return true;
+    if (!confirm('入力中の記録を保存せずに戻りますか？')) return false;
+    stopRest();
+    return true;
+  },
+});
 document.querySelectorAll('.tabbar button').forEach(b =>
   b.addEventListener('click', () => show(b.dataset.view)));
 

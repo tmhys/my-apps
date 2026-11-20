@@ -70,6 +70,8 @@ function showView(id) {
   renderStats();
   window.scrollTo(0, 0);
 }
+// 戻る操作でレッスン一覧に戻す（クイズ中に戻ってもモジュールから抜けない。../../nav.js）
+showView = MyNav.views('view-path', showView);
 function renderStats() {
   document.getElementById('st-xp').textContent = S.xp;
   document.getElementById('st-streak').textContent = S.streak;

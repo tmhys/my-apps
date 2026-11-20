@@ -694,6 +694,8 @@ function showView(id) {
   });
   window.scrollTo(0, 0);
 }
+// 戻る操作でホームに戻す（設定・定期便から戻ってもツール一覧まで抜けない。../nav.js）
+showView = MyNav.views('view-home', showView);
 
 function openSettings() {
   const s = getSettings();
