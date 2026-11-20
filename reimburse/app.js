@@ -468,16 +468,19 @@ function openSettings() {
   el('set-url').value = s.baseUrl;
   el('set-token').value = s.token;
   el('set-msg').hidden = true;
-  el('view-home').classList.remove('active');
-  el('view-settings').classList.add('active');
-  window.scrollTo(0, 0);
+  showView('view-settings');
 }
 
 function closeSettings() {
-  el('view-settings').classList.remove('active');
-  el('view-home').classList.add('active');
+  showView('view-home');
+}
+
+function showView(id) {
+  ['view-home', 'view-settings'].forEach((v) => el(v).classList.toggle('active', v === id));
   window.scrollTo(0, 0);
 }
+// 戻る操作でホームに戻す（設定から戻ってもツール一覧まで抜けない。../nav.js）
+showView = MyNav.views('view-home', showView);
 
 function setMsg(kind, text) {
   const box = el('set-msg');
