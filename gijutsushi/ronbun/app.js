@@ -419,7 +419,13 @@ persist();
 editingId = null;
 renderBank();
 showView('view-records');
-if (window.GijutsushiHabit) window.GijutsushiHabit.markStudied();
+// Obsidian に骨子を残し、習慣「📘 技術士勉強」も立てる（gijutsushi/habit.js）。
+// 編集して保存し直したときは同じ id で送るので、Obsidian 側のノートが上書きされる。
+if (window.GijutsushiHabit) window.GijutsushiHabit.markStudied({
+id: String(rec.id), kind: 'outline', qid: rec.qid, label: qLabel(qById(rec.qid)),
+minutes: rec.minutes, checksOk: checks.filter(c => c.ok).length, checksTotal: checks.length,
+text: outlineToText(rec),
+});
 });
 
 function outlineToText(rec) {

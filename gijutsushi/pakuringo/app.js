@@ -272,9 +272,16 @@ function finishQuiz() {
   done.hidden = false;
   document.getElementById('done-text').innerHTML =
     `${esc(quiz.label)} 完了！<br>${quiz.queue.length}問中 ${quiz.correct}問正解 ／ +${quiz.xpEarned} XP<br>今日の合計 ${S.todayXp} XP（目標 ${DAILY_GOAL} XP）`;
+  const record = {
+    id: 'L' + Date.now(), kind: 'lesson', label: quiz.label,
+    total: quiz.queue.length, correct: quiz.correct, xp: quiz.xpEarned,
+    totalXp: S.xp, streak: S.streak,
+    mastery: CARDS.map(c => ({ t: c.title, b: box(c.id) })),
+  };
   quiz = null;
   renderStats();
-  if (window.GijutsushiHabit) window.GijutsushiHabit.markStudied();
+  // Obsidian に残し、習慣「📘 技術士勉強」も立てる（gijutsushi/habit.js）
+  if (window.GijutsushiHabit) window.GijutsushiHabit.markStudied(record);
 }
 
 /* ---------- カード一覧 ---------- */

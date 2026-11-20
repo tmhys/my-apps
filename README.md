@@ -14,21 +14,27 @@
 | 立替精算 | `reimburse/` | 接続先のGAS | 妻が立て替えた分の未精算と送金額。送金したら精算済みにする。明細はタップするとメモ・精算対象の切り替え・レシート画像が開ける。バックエンドは [tmhys/gas](https://github.com/tmhys/gas) の `receipt-reimbursement` |
 | 買い物メモ | `shopping/` | 接続先のGAS（見送りの控えだけ端末内） | LINE で来た「買っといて」と欲しいもの。発注待ち／未確認／欲しいもの／発注済／見送りのタブ。発注済には発注日・到着予定・注文番号。**定期便はヘッダーの「定期便」から開く別ページ**で、Amazon のメールから作った一覧を見るだけ（買い物の依頼とは切り離してある）。バックエンドは [tmhys/gas](https://github.com/tmhys/gas) の `household-ordering` |
 
-### 技術士 勉強（`gijutsushi/`）と習慣グリッドの連携
+### 技術士 勉強（`gijutsushi/`）と Obsidian・習慣グリッドの連携
 
 キーワード学習のレッスン（復習含む）を1回終える、または論文骨子を1本保存すると、
-`gijutsushi/habit.js` が習慣グリッドの `gijutsushi`（📘 技術士勉強）に今日の記録を送る。
+`gijutsushi/habit.js` が habit-relay に `action:"gijutsushi"` で記録を送る。
+受け側（github_obsidian の `gijutsushi-log.yml`）が骨子を `10_Gijutsushi/骨子/` に1本1ノート、
+レッスンなら `10_Gijutsushi/キーワード習熟.md` を作り直し、`05_Stream` に1行、
+習慣「📘 技術士勉強」も同じ workflow で立てる（アプリから習慣を別に送らない）。
 
-- 送り先は habit-pwa と同じ `habit-relay`。my-apps と habit-pwa は同じ `https://tmhys.github.io`
-  なので localStorage を共有しており、習慣グリッドの⚙️で入れた URL・合言葉をそのまま読む（ここでは保存しない）
-- 1日1回だけ。習慣グリッドのスナップショットに今日が既にあれば送らない
-- 送れなかったら次に技術士の画面を開いたときに送り直す（当日中のみ）
+- 中継の URL・合言葉は habit-pwa と同じものを読む。my-apps と habit-pwa は同じ `https://tmhys.github.io`
+  なので localStorage を共有している（ここでは保存しない）
+- 送れなかった記録は `gijutsushi:outbox` に溜め、次にどの画面を開いたときにも送り直す。
+  同じ id（骨子を編集して保存し直したもの）は Obsidian 側で上書きされる
+- 中継役が古い版（`gijutsushi` を知らない）ときは、習慣だけを1日1回送り、記録は溜めておく。
+  古い版かどうかは1日1回見直すので、中継役を更新すれば翌日以降に溜まった分が送られる
+- アプリで骨子を消しても Obsidian 側のノートは消えない
 
 **バックアップ**: 記録は端末の localStorage にしかないので、技術士ホームの「💾 まとめてバックアップ」で
 キーワード学習と論文骨子を1つの JSON にまとめ、共有メニュー（Obsidian・Google ドライブ等）に渡す
 （`gijutsushi/backup.js`）。7日以上あいて中身が変わっていれば、ホームの帯と各画面のトースト（1日1回）で催促する。
 復元はホームの「復元」から（各モジュールが書き出した古い形式も読める）。
-Obsidian へ完全自動で送るには `habit-relay`（tmhys/gas）に新しい種類の送信を足す必要があり、未対応。
+（Obsidian へは上の連携で自動で残るので、こちらは端末の移行・念のための控え）
 
 **II-1（専門知識）**: 過去問の原文は持っていないので、キーワード学習のカードのうち出題区分に II-1 を含む
 31語から「練習問題」を作る（画面に「過去問ではありません」と明記）。定義・原理／特徴／留意点／適用例の
