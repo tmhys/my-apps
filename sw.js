@@ -13,7 +13,7 @@
  *   だったので、クエリ違いの応答を取り違える（先月の金額が出る）恐れがあった。
  *   自分のオリジン以外は触らない。
  */
-const CACHE = 'my-apps-v20';
+const CACHE = 'my-apps-v21';
 const ASSETS = [
   './',
   './index.html',
@@ -37,9 +37,17 @@ const ASSETS = [
   './shopping/app.js',
   './gijutsushi/',
   './gijutsushi/index.html',
-  './gijutsushi/styles.css',
-  './gijutsushi/app.js',
-  './gijutsushi/data.js',
+  './gijutsushi/hub.css',
+  './gijutsushi/ronbun/',
+  './gijutsushi/ronbun/index.html',
+  './gijutsushi/ronbun/styles.css',
+  './gijutsushi/ronbun/app.js',
+  './gijutsushi/ronbun/data.js',
+  './gijutsushi/pakuringo/',
+  './gijutsushi/pakuringo/index.html',
+  './gijutsushi/pakuringo/styles.css',
+  './gijutsushi/pakuringo/app.js',
+  './gijutsushi/pakuringo/data.js',
 ];
 
 self.addEventListener('install', e => {

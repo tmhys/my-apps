@@ -1,0 +1,32 @@
+:root {
+  --bg: #f4f2ed;
+  --card: #ffffff;
+  --ink: #22302a;
+  --sub: #6b7672;
+  --line: #ddd8cf;
+  --accent: #1e6b4f;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+}
+.app-header { padding: 20px 16px 4px; max-width: 640px; margin: 0 auto; }
+.app-header h1 { font-size: 24px; margin: 0; letter-spacing: .02em; }
+.subtitle { color: var(--sub); font-size: 13px; margin: 4px 0 0; }
+main { padding: 16px; max-width: 640px; margin: 0 auto; }
+.back { display: inline-block; font-size: 13px; color: var(--accent); text-decoration: none; margin-bottom: 6px; }
+.mode-card {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  padding: 18px 16px; margin-bottom: 14px; text-decoration: none; color: var(--ink);
+}
+.mode-emoji { font-size: 34px; flex: none; }
+.mode-body { flex: 1; }
+.mode-name { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+.mode-desc { font-size: 13px; color: var(--sub); line-height: 1.7; }
+.mode-stat { font-size: 12.5px; color: var(--accent); font-weight: 700; margin-top: 6px; }
+.mode-arrow { font-size: 26px; color: var(--sub); flex: none; }
+.hint { font-size: 12px; color: var(--sub); line-height: 1.8; margin-top: 6px; }

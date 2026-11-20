@@ -3,130 +3,64 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>論文骨子ドリル</title>
+<title>技術士 勉強</title>
 <meta name="theme-color" content="#f4f2ed">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="骨子ドリル">
+<meta name="apple-mobile-web-app-title" content="技術士勉強">
 <link rel="manifest" href="../manifest.webmanifest">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
-<link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./hub.css">
 </head>
 <body>
 <header class="app-header">
   <a class="back" href="../">← ツール一覧に戻る</a>
-  <h1>論文骨子ドリル</h1>
-  <p class="subtitle">技術士第二次試験（機械部門・機械設計）／過去問で骨子を回す</p>
+  <h1>技術士 勉強</h1>
+  <p class="subtitle">第二次試験（機械部門・選択科目「機械設計」）の勉強入口</p>
 </header>
 
 <main>
-  <!-- 過去問バンク -->
-  <section id="view-bank" class="view active">
-    <div class="card">
-      <div class="card-head">
-        <h2>過去問バンク</h2>
-        <span id="bank-count" class="badge"></span>
-      </div>
-      <div class="row">
-        <select id="f-subject" aria-label="科目">
-          <option value="">科目：すべて</option>
-          <option value="I">必須科目 I</option>
-          <option value="II-2">選択 II-2（応用）</option>
-          <option value="III">選択 III（問題解決）</option>
-        </select>
-        <select id="f-year" aria-label="年度">
-          <option value="">年度：すべて</option>
-          <option value="7">令和7年度</option>
-          <option value="6">令和6年度</option>
-          <option value="5">令和5年度</option>
-          <option value="4">令和4年度</option>
-        </select>
-      </div>
-      <button id="btn-random" type="button" class="primary sub-btn">未実施の問題からランダムに1問</button>
-      <div id="bank-list"></div>
+  <a class="mode-card" href="./pakuringo/">
+    <div class="mode-emoji">🦉</div>
+    <div class="mode-body">
+      <div class="mode-name">キーワード学習（パクリンゴ）</div>
+      <div class="mode-desc">重要キーワード55語をレッスン形式で回す。穴埋め・対比・応用の6形式、XPと習熟度つき。</div>
+      <div class="mode-stat" id="stat-paku">読み込み中…</div>
     </div>
-  </section>
+    <div class="mode-arrow">›</div>
+  </a>
 
-  <!-- ドリル -->
-  <section id="view-drill" class="view">
-    <div class="card">
-      <div class="card-head">
-        <h2 id="drill-title">骨子を作る</h2>
-        <span id="drill-badge" class="badge"></span>
-      </div>
-      <p id="drill-empty" class="empty">過去問バンクで問題を選んでください。</p>
-      <div id="drill-main" hidden>
-        <details class="qbox">
-          <summary>問題文を見る</summary>
-          <div id="drill-qtext" class="qtext"></div>
-        </details>
-
-        <div class="timer-row">
-          <span class="timer-label">タイマー</span>
-          <span id="timer-display" class="timer-display">15:00</span>
-          <button id="timer-toggle" type="button">開始</button>
-          <button id="timer-reset" type="button">リセット</button>
-          <label class="timer-set">設定
-            <input type="number" id="timer-minutes" value="15" min="1" max="120"> 分
-          </label>
-        </div>
-
-        <div id="drill-form"></div>
-
-        <div class="card-in">
-          <h3>キーワード（解決策の引き出し）</h3>
-          <input type="search" id="kw-search" placeholder="キーワードを検索（例：FMEA、予知保全）">
-          <div id="kw-list" class="kw-list"></div>
-          <p class="hint">タップすると、最後に触った入力欄に挿入されます。</p>
-        </div>
-
-        <div class="card-in">
-          <h3>自動チェック</h3>
-          <ul id="check-list" class="check-list"></ul>
-        </div>
-
-        <div class="row">
-          <button id="btn-save-outline" class="primary">骨子を保存する</button>
-        </div>
-        <div class="row">
-          <button id="btn-copy-outline" type="button">添削用にコピー</button>
-          <button id="btn-show-answer" type="button">回答例を見る</button>
-        </div>
-        <div id="drill-answer" class="answer-box" hidden></div>
-      </div>
+  <a class="mode-card" href="./ronbun/">
+    <div class="mode-emoji">✏️</div>
+    <div class="mode-body">
+      <div class="mode-name">論文骨子ドリル</div>
+      <div class="mode-desc">過去問24問（令和4〜7年）で論文の骨子を作る練習。全問に回答例つき。</div>
+      <div class="mode-stat" id="stat-ronbun">読み込み中…</div>
     </div>
-  </section>
+    <div class="mode-arrow">›</div>
+  </a>
 
-  <!-- 記録 -->
-  <section id="view-records" class="view">
-    <div class="card">
-      <h2>記録</h2>
-      <div id="records-summary" class="session-detail"></div>
-      <div id="records-list"></div>
-    </div>
-    <div class="card">
-      <h2>データのバックアップ</h2>
-      <p class="hint">記録はこの端末のブラウザ内（localStorage）にだけ保存されます。機種変更やブラウザのデータ消去で消えるので、ときどきJSONで書き出して保管してください。書き出したファイルは読み込んで復元できます。</p>
-      <div class="row">
-        <button id="btn-export" type="button">JSONで書き出す</button>
-        <label class="file-btn">JSONを読み込む
-          <input type="file" id="f-import" accept="application/json,.json" hidden>
-        </label>
-      </div>
-      <button id="btn-wipe" type="button" class="danger">全データを削除</button>
-    </div>
-  </section>
+  <p class="hint">記録はどちらもこの端末の中（localStorage）に保存されます。骨子の添削は、ドリル内の「添削用にコピー」で骨子をコピーして、Muse のチャットに貼ってください。</p>
 </main>
 
-<nav class="tabbar">
-  <button data-view="view-bank" class="active">過去問</button>
-  <button data-view="view-drill">ドリル</button>
-  <button data-view="view-records">記録</button>
-</nav>
-
-<script src="./data.js"></script>
-<script src="./app.js"></script>
+<script>
+(function () {
+  function ls(key) { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; } }
+  var p = ls('pakuringo:state');
+  var el = document.getElementById('stat-paku');
+  if (p && p.boxes) {
+    var mastered = Object.keys(p.boxes).filter(function (k) { return p.boxes[k] >= 5; }).length;
+    var seen = Object.keys(p.boxes).filter(function (k) { return p.boxes[k] > 0; }).length;
+    el.textContent = 'XP ' + (p.xp || 0) + ' ／ 着手 ' + seen + '語 ／ 習熟 ' + mastered + '語（全55語）';
+  } else {
+    el.textContent = 'まだ記録がありません（スペース版の進捗は初回に引き継がれます）';
+  }
+  var o = ls('gijutsushi:outlines');
+  document.getElementById('stat-ronbun').textContent =
+    '保存した骨子 ' + (Array.isArray(o) ? o.length : 0) + '本';
+})();
+</script>
 </body>
 </html>

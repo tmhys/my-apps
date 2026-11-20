@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>キーワード学習（パクリンゴ）</title>
+<meta name="theme-color" content="#f4f2ed">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="パクリンゴ">
+<link rel="manifest" href="../../manifest.webmanifest">
+<link rel="icon" href="../../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../../icons/icon-192.png">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<header class="app-header">
+  <a class="back" href="../">← 技術士ホームに戻る</a>
+  <h1>🦉 キーワード学習</h1>
+  <p class="subtitle">技術士二次試験（機械部門）の重要キーワード55語</p>
+  <div class="stats-bar">
+    <span class="stat">⭐ <b id="st-xp">0</b> XP</span>
+    <span class="stat">🔥 <b id="st-streak">0</b>日</span>
+    <span class="stat">❤️ <b id="st-hearts">5</b></span>
+    <span class="stat">今日 <b id="st-today">0</b>/30 XP</span>
+  </div>
+</header>
+
+<main>
+  <!-- レッスンパス -->
+  <section id="view-path" class="view active">
+    <div class="card">
+      <div class="card-head">
+        <h2>レッスン</h2>
+        <span id="path-badge" class="badge"></span>
+      </div>
+      <div id="lesson-list"></div>
+      <button id="btn-review" class="primary" type="button">復習する（弱いカードから10問）</button>
+      <p class="hint">レッスンは5語ずつ。解くほど各カードの習熟度（ボックス）が上がり、高いカードほど対比・応用問題が増えます。ハートは間違えると減り、翌日に回復します。</p>
+    </div>
+  </section>
+
+  <!-- クイズ -->
+  <section id="view-quiz" class="view">
+    <div class="card">
+      <div class="quiz-head">
+        <button id="quiz-exit" type="button" class="mini">✕ やめる</button>
+        <div class="quiz-progress"><div id="quiz-bar"></div></div>
+        <span id="quiz-count" class="badge"></span>
+      </div>
+      <div id="quiz-main">
+        <span id="q-type" class="q-type"></span>
+        <p id="q-prompt" class="q-prompt"></p>
+        <div id="q-choices" class="q-choices"></div>
+        <div id="q-feedback" class="q-feedback" hidden>
+          <p id="q-verdict"></p>
+          <div id="q-explain" class="q-explain"></div>
+          <button id="q-next" class="primary" type="button">次へ</button>
+        </div>
+      </div>
+      <div id="quiz-done" hidden>
+        <p class="done-emoji">🎉</p>
+        <p id="done-text" class="done-text"></p>
+        <button id="btn-back-path" class="primary" type="button">レッスン一覧に戻る</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- カード一覧 -->
+  <section id="view-cards" class="view">
+    <div class="card">
+      <div class="card-head">
+        <h2>カード一覧</h2>
+        <span id="cards-badge" class="badge"></span>
+      </div>
+      <input type="search" id="card-search" placeholder="キーワードを検索">
+      <div id="card-list"></div>
+    </div>
+  </section>
+
+  <!-- 記録 -->
+  <section id="view-records" class="view">
+    <div class="card">
+      <h2>記録</h2>
+      <div id="records-summary"></div>
+      <div id="records-cats"></div>
+    </div>
+    <div class="card">
+      <h2>データのバックアップ</h2>
+      <p class="hint">進捗はこの端末のブラウザ内（localStorage）にだけ保存されます。ときどきJSONで書き出して保管してください。</p>
+      <div class="row">
+        <button id="btn-export" type="button">JSONで書き出す</button>
+        <label class="file-btn">JSONを読み込む
+          <input type="file" id="f-import" accept="application/json,.json" hidden>
+        </label>
+      </div>
+      <button id="btn-reset" type="button" class="danger">進捗をリセット</button>
+    </div>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button data-view="view-path" class="active">レッスン</button>
+  <button data-view="view-cards">カード</button>
+  <button data-view="view-records">記録</button>
+</nav>
+
+<script src="./data.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>
