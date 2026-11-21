@@ -13,7 +13,7 @@
  *   だったので、クエリ違いの応答を取り違える（先月の金額が出る）恐れがあった。
  *   自分のオリジン以外は触らない。
  */
-const CACHE = 'my-apps-v28';
+const CACHE = 'my-apps-v29';
 const ASSETS = [
   './',
   './index.html',
@@ -41,6 +41,7 @@ const ASSETS = [
   './gijutsushi/hub.css',
   './gijutsushi/habit.js',
   './gijutsushi/backup.js',
+  './gijutsushi/abbr.js',
   './gijutsushi/ronbun/',
   './gijutsushi/ronbun/index.html',
   './gijutsushi/ronbun/styles.css',

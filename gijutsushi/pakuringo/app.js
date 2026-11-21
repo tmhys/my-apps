@@ -101,7 +101,7 @@ function renderPath() {
       <div class="node">${node}</div>
       <div class="l-body">
         <div class="l-name">レッスン ${i + 1}</div>
-        <div class="l-words">${cards.map(c => esc(c.title)).join('、')}</div>
+        <div class="l-words">${esc(Abbr.expand(cards.map(c => c.title).join('、')))}</div>
       </div>
       <button type="button" data-lesson="${i}" ${unlocked ? '' : 'disabled'}>${done ? 'もう一度' : 'スタート'}</button>
     </div>`;
@@ -322,10 +322,14 @@ function renderQuestion() {
   document.getElementById('quiz-count').textContent = `${quiz.idx + 1}/${quiz.queue.length}`;
   document.getElementById('quiz-bar').style.width = `${(quiz.idx / quiz.queue.length) * 100}%`;
   document.getElementById('q-type').textContent = q.type;
-  document.getElementById('q-prompt').textContent = q.prompt;
+  // 略語に正式名称を添える（../abbr.js）。問題文では答えになる語を含む名称は添えない。
+  const ans = q.choices[q.answerIdx];
+  const ansCard = cardByTitle(ans);
+  const avoid = [ans, ...(ansCard ? titleVariants(ansCard) : [])];
+  document.getElementById('q-prompt').textContent = Abbr.expand(q.prompt, { avoid });
   document.getElementById('q-feedback').hidden = true;
   document.getElementById('q-choices').innerHTML = q.choices.map((ch, i) =>
-    `<button type="button" data-i="${i}">${esc(ch)}</button>`).join('');
+    `<button type="button" data-i="${i}">${esc(Abbr.expand(ch))}</button>`).join('');
   document.getElementById('q-next').textContent = quiz.idx + 1 >= quiz.queue.length ? '結果を見る' : '次へ';
   renderStats();
 }
@@ -357,7 +361,7 @@ document.getElementById('q-choices').addEventListener('click', e => {
   }
   persist();
   document.getElementById('q-verdict').textContent = ok ? '⭕ 正解！ +10 XP' : quiz.lessonIdx != null ? `❌ 不正解（ハート ${S.hearts}）` : '❌ 不正解（復習なのでハートは減りません）';
-  document.getElementById('q-explain').textContent = `${c.title}\n${c.body}\n\n関連：${c.related} ／ 出題：${c.exam}`;
+  document.getElementById('q-explain').textContent = Abbr.expand(`${c.title}\n${c.body}\n\n関連：${c.related} ／ 出題：${c.exam}`);
   document.getElementById('q-feedback').hidden = false;
   renderStats();
 });
@@ -405,15 +409,15 @@ function renderCards() {
   const s = document.getElementById('card-search').value.trim();
   const list = CARDS.filter(c => !s || c.title.includes(s) || c.body.includes(s) || c.category.includes(s));
   document.getElementById('cards-badge').textContent = `${list.length}語`;
-  document.getElementById('card-list').innerHTML = list.map(c => `
+  document.getElementById('card-list').innerHTML = list.map(c => { const seen = new Set(); return `
     <div class="kw-item">
       <div class="kw-head" data-kw="${c.id}">
-        <span class="kw-title">${esc(c.title)}${c.added ? '<span class="added-badge">追加</span>' : ''}<br>
+        <span class="kw-title">${esc(Abbr.expand(c.title, { seen }))}${c.added ? '<span class="added-badge">追加</span>' : ''}<br>
         <span class="kw-meta">${esc(c.category)} ／ ${esc(c.exam)}</span></span>
         ${dots(box(c.id))}
       </div>
-      <div class="kw-body" data-kwbody="${c.id}" hidden>${esc(c.body)}\n\n関連：${esc(c.related)}</div>
-    </div>`).join('') || '<p class="hint">見つかりませんでした。</p>';
+      <div class="kw-body" data-kwbody="${c.id}" hidden>${esc(Abbr.expand(`${c.body}\n\n関連：${c.related}`, { seen }))}</div>
+    </div>`; }).join('') || '<p class="hint">見つかりませんでした。</p>';
 }
 document.getElementById('card-search').addEventListener('input', renderCards);
 document.getElementById('card-list').addEventListener('click', e => {
