@@ -94,8 +94,8 @@ ${n? `<span class="badge">実施 ${n}回</span>`: '<span class="badge">未実施
 <button type="button" data-act="q" data-qid="${q.id}">問題文</button>
 <button type="button" data-act="a" data-qid="${q.id}">回答例</button>
 </div>
-<div class="qtext" data-box="q-${q.id}" hidden>${esc(q.text)}</div>
-<div class="answer-box" data-box="a-${q.id}" hidden>${esc(fmtAnswer(ANSWERS[q.id]))}</div>
+<div class="qtext" data-box="q-${q.id}" hidden>${esc(Abbr.expand(q.text))}</div>
+<div class="answer-box" data-box="a-${q.id}" hidden>${esc(Abbr.expand(fmtAnswer(ANSWERS[q.id])))}</div>
 </div>`;
 }).join('') || '<p class="empty">該当する問題がありません。</p>';
 }
@@ -124,7 +124,7 @@ document.getElementById('drill-empty').hidden = true;
 document.getElementById('drill-main').hidden = false;
 document.getElementById('drill-title').textContent = qLabel(q) + (record? '（編集中）': '');
 document.getElementById('drill-badge').textContent = q.subject === 'II-1'? '専門知識': q.subject === 'II-2'? '応用型': '課題解決型';
-document.getElementById('drill-qtext').textContent = q.text;
+document.getElementById('drill-qtext').textContent = Abbr.expand(q.text);
 document.getElementById('drill-answer').hidden = true;
 buildForm(q);
 if (record) fillForm(record.fields);
@@ -346,7 +346,8 @@ const kwList = document.getElementById('kw-list');
 function renderKeywords() {
 const s = document.getElementById('kw-search').value.trim();
 const list = KEYWORDS.filter(k =>!s || k.includes(s)).slice(0, 60);
-kwList.innerHTML = list.map(k => `<button type="button" class="kw-chip">${esc(k)}</button>`).join('') ||
+// 表示は略語に正式名称を添え、挿入するのは元の語（data-k）
+kwList.innerHTML = list.map(k => `<button type="button" class="kw-chip" data-k="${esc(k)}">${esc(Abbr.expand(k))}</button>`).join('') ||
 '<span class="hint">見つかりませんでした。</span>';
 }
 document.getElementById('kw-search').addEventListener('input', renderKeywords);
@@ -357,7 +358,7 @@ const t = lastFocus && document.contains(lastFocus)? lastFocus:
 document.querySelector('#d-solutions .sol-text') || document.querySelector('#drill-form textarea');
 if (!t) return;
 const start = t.selectionStart || t.value.length;
-t.value = t.value.slice(0, start) + chip.textContent + t.value.slice(t.selectionEnd || start);
+t.value = t.value.slice(0, start) + chip.dataset.k + t.value.slice(t.selectionEnd || start);
 t.focus();
 renderChecks();
 });
@@ -471,7 +472,7 @@ setTimeout(() => { document.getElementById('btn-copy-outline').textContent = '�
 });
 document.getElementById('btn-show-answer').addEventListener('click', () => {
 const box = document.getElementById('drill-answer');
-box.textContent = fmtAnswer(ANSWERS[currentQid]);
+box.textContent = Abbr.expand(fmtAnswer(ANSWERS[currentQid]));
 box.hidden =!box.hidden;
 document.getElementById('btn-show-answer').textContent = box.hidden? '回答例を見る': '回答例を閉じる';
 });
@@ -522,7 +523,7 @@ setTimeout(() => { b.textContent = '添削用にコピー';}, 2000);
 } else if (b.dataset.ract === 'detail') {
 const box = document.querySelector(`[data-rbox="${id}"]`);
 if (box.hidden) {
-box.textContent = outlineToText(rec) + '\n\n===== 回答例 =====\n' + fmtAnswer(ANSWERS[rec.qid]);
+box.textContent = outlineToText(rec) + '\n\n===== 回答例 =====\n' + Abbr.expand(fmtAnswer(ANSWERS[rec.qid]));
 box.hidden = false; b.textContent = '閉じる';
 } else { box.hidden = true; b.textContent = '詳細';}
 }
