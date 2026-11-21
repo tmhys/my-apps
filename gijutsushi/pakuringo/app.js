@@ -25,6 +25,7 @@ function defaultState() {
     streakLast: '', streak: 0, bestStreak: 0,
     todayDate: todayStr(), todayXp: 0,
     lessonsDone: [],
+    lastAt: {}, // カードごとに最後に解いた時刻（復習の選び方に使う）
   };
 }
 function loadState() {
@@ -43,6 +44,7 @@ function loadState() {
   const t = todayStr();
   if (s.heartsDate !== t) { s.hearts = 5; s.heartsDate = t; }
   if (s.todayDate !== t) { s.todayDate = t; s.todayXp = 0; }
+  if (!s.lastAt) s.lastAt = {};
   return s;
 }
 let S = loadState();
@@ -110,9 +112,17 @@ document.getElementById('lesson-list').addEventListener('click', e => {
   if (!b || b.disabled) return;
   startLesson(Number(b.dataset.lesson));
 });
+// 復習の10枚: 習熟度が低いカードを優先しつつ、直近6時間に解いたカードは後回しにし、
+// 同じくらいのカード同士は乱順にする（以前は並びが固定で、毎回ほぼ同じ10枚になっていた）。
+const RECENT_MS = 6 * 3600 * 1000;
+function reviewScore(c, now) {
+  const recent = S.lastAt[c.id] && now - S.lastAt[c.id] < RECENT_MS;
+  return box(c.id) * 10 + (recent ? 15 : 0) + Math.random() * 6;
+}
 document.getElementById('btn-review').addEventListener('click', () => {
-  const pool = [...CARDS].sort((a, b2) => (box(a.id) - box(b2.id)) || ((S.seen[a.id] || 0) - (S.seen[b2.id] || 0))).slice(0, 10);
-  startQuiz(pool.flatMap(c => [makeQuestion(c, null)]), null, '復習');
+  const now = Date.now();
+  const pool = [...CARDS].map(c => ({ c, k: reviewScore(c, now) })).sort((a, b2) => a.k - b2.k).slice(0, 10).map(x => x.c);
+  startQuiz(shuffle(pool).map(c => makeQuestion(c, null)), null, '復習');
 });
 
 /* ---------- 問題生成 ----------
@@ -265,29 +275,32 @@ function mkRelated(c) {
   return { type: '関連キーワード', cardId: c.id, prompt: `「${c.title}」と関連が深い用語はどれ？`, ...withChoices(ans, o) };
 }
 const BUILDERS = { t2d: mkT2D, d2t: mkD2T, cloze: mkCloze, scenario: mkScenario, contrast: mkContrast, related: mkRelated };
-function makeQuestion(c, prefer) {
+// 習熟度に合った形式の中から乱順で選ぶ（以前は順番が固定で、いつも同じ形式になっていた）。
+// avoid に渡した形式は避ける（同じカードの2問目を別の形式にするため）。
+function makeQuestion(c, prefer, avoid) {
   const b = box(c.id);
   let order;
   if (prefer) order = [prefer];
-  else if (b <= 1) order = ['t2d', 'd2t', 'cloze'];
-  else if (b <= 3) order = ['cloze', 'scenario', 'd2t', 'related'];
-  else order = ['contrast', 'related', 'scenario', 'cloze'];
-  order = [...order, 't2d', 'd2t', 'cloze', 'scenario', 'related', 'contrast'];
+  else if (b <= 1) order = shuffle(['t2d', 'd2t', 'cloze']);
+  else if (b <= 3) order = shuffle(['cloze', 'scenario', 'd2t', 'related']);
+  else order = shuffle(['contrast', 'related', 'scenario', 'cloze']);
+  order = [...order, ...shuffle(['t2d', 'd2t', 'cloze', 'scenario', 'related', 'contrast'])];
   for (const k of [...new Set(order)]) {
+    if (k === avoid) continue;
     const q = BUILDERS[k](c);
-    if (q) return q;
+    if (q) return Object.assign(q, { kind: k });
   }
-  return mkT2D(c) || mkD2T(c); // 用語→説明は全カードで必ず作れる
+  return Object.assign(mkT2D(c) || mkD2T(c), { kind: 't2d' }); // 用語→説明は全カードで必ず作れる
 }
+// レッスンは5枚×2問。1周目で5枚を1問ずつ、2周目で別の形式でもう1問ずつ出す
+// （以前は10問をまとめて混ぜていたので、同じカードが続けて出ることがあった）。
 function startLesson(idx) {
   const cards = LESSONS[idx];
-  const qs = cards.flatMap(c => {
-    const first = makeQuestion(c, null);
-    let second = makeQuestion(c, null);
-    if (second.type === first.type) second = makeQuestion(c, null);
-    return [first, second];
-  });
-  startQuiz(shuffle(qs), idx, `レッスン ${idx + 1}`);
+  const firsts = shuffle(cards).map(c => makeQuestion(c, null));
+  const seconds = shuffle(cards).map(c => makeQuestion(c, null, firsts.find(q => q.cardId === c.id).kind));
+  // 1周目の最後と2周目の最初が同じカードにならないように
+  if (seconds[0].cardId === firsts[firsts.length - 1].cardId) seconds.push(seconds.shift());
+  startQuiz([...firsts, ...seconds], idx, `レッスン ${idx + 1}`);
 }
 
 /* ---------- クイズ実行 ---------- */
@@ -330,6 +343,7 @@ document.getElementById('q-choices').addEventListener('click', e => {
     else if (i === picked) btn.classList.add('wrong');
   });
   S.seen[c.id] = (S.seen[c.id] || 0) + 1;
+  S.lastAt[c.id] = Date.now();
   if (ok) {
     quiz.correct++;
     quiz.xpEarned += 10;
