@@ -45,7 +45,7 @@
       el.id = 'habit-toast';
       el.style.cssText = 'position:fixed;left:50%;bottom:84px;transform:translateX(-50%);max-width:90vw;' +
         'background:#22302a;color:#fff;font-size:13px;line-height:1.6;padding:10px 14px;border-radius:12px;' +
-        'box-shadow:0 4px 16px rgba(0,0,0,.2);z-index:9999;transition:opacity .3s;';
+        'box-shadow:0 4px 16px rgba(0,0,0,.2);z-index:9999;transition:opacity .3s;pointer-events:none;';
       document.body.appendChild(el);
     }
     el.textContent = msg;

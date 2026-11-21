@@ -115,40 +115,130 @@ document.getElementById('btn-review').addEventListener('click', () => {
   startQuiz(pool.flatMap(c => [makeQuestion(c, null)]), null, '復習');
 });
 
-/* ---------- 問題生成 ---------- */
+/* ---------- 問題生成 ----------
+   カードの本文は「〜する手法＝トポロジー最適化。」の形で用語を含むので、そのまま出すと
+   問題文や選択肢に答えが載ってしまう。出題前に必ず用語を「〇〇」で伏せる（mask）。
+   誤答の選択肢は、同じ分野・対比ペア・関連語から優先して選び、消去法で解けないようにする。 */
+const MASK = '〇〇';
+// 自動の分解（括弧・中黒）では拾えない言い換え。これも伏せる。
+const ALIASES = {
+  'AI・機械学習の活用': ['機械学習', 'AI'],
+  'CAEのV&V': ['V&V', 'Verification', 'Validation'],
+  '熱設計（熱膨張対策）': ['熱膨張'],
+  '疲労設計': ['疲労'],
+  '信頼性設計': ['信頼性'],
+  '振動・共振': ['共振'],
+  'フィードバック制御・PID': ['PID制御'],
+  '品質マネジメント（ISO 9001）': ['ISO 9001'],
+};
+function titleVariants(c) {
+  if (c._variants) return c._variants;
+  const parts = [c.title, ...c.title.split(/[（）()・／]/)].map(t => t.trim()).filter(t => t.length >= 2);
+  const v = [...new Set([...parts, ...(ALIASES[c.title] || [])])].sort((x, y) => y.length - x.length);
+  return (c._variants = v);
+}
+function escRe(t) { return t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+// 英字の語は単語の途中では伏せない（DR が DRBFM を壊さないように）
+function wordRe(t) {
+  const ascii = /^[A-Za-z0-9&]+$/.test(t);
+  return new RegExp(ascii ? `(?<![A-Za-z])${escRe(t)}(?![A-Za-z])` : escRe(t), 'g');
+}
+function maskWords(text, words) {
+  let out = text;
+  words.forEach(w => { out = out.replace(wordRe(w), MASK); });
+  // 「＝〇〇（ポカヨケ）」のような定義の締めは丸ごと落とす（括弧の中に別名が入っていることが多い）
+  out = out.replace(/＝〇〇(?:（(?:[^（）]|（[^（）]*）)*）)*/g, '');
+  return out.replace(/(〇〇)+/g, MASK);
+}
+function maskCard(c, text) { return maskWords(text, titleVariants(c)); }
 function shortDef(c) {
-  const first = c.body.split('\n')[0];
-  const idx = first.indexOf('。');
-  const s = idx >= 0 ? first.slice(0, idx + 1) : first;
-  return s.length > 72 ? s.slice(0, 72) + '…' : s;
+  const lines = maskCard(c, c.body).split('\n');
+  let s = '';
+  for (const line of lines) {
+    for (const sent of line.split(/(?<=。)/)) {
+      s += sent;
+      if (s.length >= 24) break;
+    }
+    if (s.length >= 24) break;
+  }
+  return s.length > 90 ? s.slice(0, 90) + '…' : s;
 }
 function withChoices(answer, others) {
   const choices = shuffle([answer, ...others]);
   return { choices, answerIdx: choices.indexOf(answer) };
 }
-function otherCards(c, n) { return shuffle(CARDS.filter(x => x.id !== c.id)).slice(0, n); }
+// 紛らわしい順に並べた他のカード（対比ペア > 関連語 > 同じ分野 > その他。同点は乱順）
+function similarCards(c) {
+  const pair = PAIRS.find(p => p.includes(c.title));
+  const rel = c.related.split('、').map(t => t.trim());
+  return shuffle(CARDS.filter(x => x.id !== c.id))
+    .map(x => ({ x, score: (pair && pair.includes(x.title) ? 4 : 0) + (rel.includes(x.title) ? 2 : 0) + (x.category === c.category ? 2 : 0) + Math.random() }))
+    .sort((p, q) => q.score - p.score)
+    .map(p => p.x);
+}
+// 問題文に出てしまっている語・重複を除いて n 個選ぶ
+function pickDistinct(cands, n, prompt, answer) {
+  const out = [];
+  for (const t of cands) {
+    if (out.length >= n) break;
+    if (!t || t === answer || out.includes(t)) continue;
+    if (prompt && prompt.includes(t)) continue;
+    if (answer.includes(t) || t.includes(answer)) continue;
+    out.push(t);
+  }
+  return out.length === n ? out : null;
+}
+function titleChoices(c, prompt, n) {
+  const cands = similarCards(c).map(x => x.title);
+  return pickDistinct(cands, n, prompt, c.title);
+}
 
 function mkT2D(c) {
-  const o = otherCards(c, 3).map(x => shortDef(x));
-  return { type: '用語→説明', cardId: c.id, prompt: `「${c.title}」の説明として正しいのはどれ？`, ...withChoices(shortDef(c), o) };
+  const ans = shortDef(c);
+  // 他のカードの説明にこの用語が出てくることがある（予防保全の説明に「予知保全は…」）ので、そこも伏せる
+  const others = pickDistinct(similarCards(c).map(x => maskCard(c, shortDef(x))), 3, '', ans);
+  if (!others) return null;
+  return { type: '用語→説明', cardId: c.id, prompt: `「${c.title}」の説明として正しいのはどれ？`, ...withChoices(ans, others) };
 }
 function mkD2T(c) {
-  const o = otherCards(c, 3).map(x => x.title);
-  return { type: '説明→用語', cardId: c.id, prompt: shortDef(c) + '\n――これは何の説明？', ...withChoices(c.title, o) };
+  const prompt = shortDef(c) + '\n――これは何の説明？';
+  const o = titleChoices(c, prompt, 3);
+  if (!o) return null;
+  return { type: '説明→用語', cardId: c.id, prompt, ...withChoices(c.title, o) };
 }
 function mkCloze(c) {
-  if (!c.blanks.length) return null;
-  const blank = c.blanks[Math.floor(Math.random() * c.blanks.length)];
-  const pool = shuffle(CARDS.filter(x => x.id !== c.id).flatMap(x => x.blanks).filter(b => b !== blank));
-  if (pool.length < 3) return null;
-  const prompt = '次の文の（　　）に入るのは？\n' + c.body.replace(blank, '（　　）');
-  return { type: '穴埋め', cardId: c.id, prompt, ...withChoices(blank, pool.slice(0, 3)) };
+  const blanks = shuffle(c.blanks);
+  for (const blank of blanks) {
+    // 「フールプルーフ（ポカヨケ）」のように用語を含む穴も、用語そのものが答えとして扱う
+    const isTitle = titleVariants(c).some(v => blank.includes(v));
+    // 答えの語はすべて伏せる。用語そのものが答えなら、言い換えも伏せる。
+    let text = c.body.split(blank).join('（　　）');
+    if (isTitle) text = maskCard(c, text);
+    if (text.includes(blank)) continue;
+    const prompt = '次の文の（　　）に入るのは？\n' + text;
+    let cands;
+    if (isTitle) {
+      cands = similarCards(c).map(x => x.title);
+    } else {
+      // 同じ分野で長さが近い穴埋め語を優先
+      const len = blank.length;
+      cands = similarCards(c).flatMap(x => x.blanks.filter(b => !CARDS.some(y => y.title === b)))
+        .map(b => ({ b, d: Math.abs(b.length - len) / Math.max(len, 4) }))
+        .filter(p => p.d <= 1)
+        .map(p => p.b);
+    }
+    const o = pickDistinct(cands, 3, prompt, blank);
+    if (o) return { type: '穴埋め', cardId: c.id, prompt, ...withChoices(blank, o) };
+  }
+  return null;
 }
 function mkScenario(c) {
-  const hit = c.blanks.find(b => b === c.title || b.includes(c.title));
-  if (!hit) return null;
-  const prompt = '文脈から用語を当てる：次の文の（　　）に入る用語は？\n' + c.body.replace(hit, '（　　）');
-  const o = otherCards(c, 3).map(x => x.title);
+  // 本文の2文目以降（特徴・使い方）から用語を当てる。定義文そのものより一段難しい。
+  const rest = c.body.split('\n').slice(1).join('\n').trim();
+  if (rest.length < 20) return null;
+  const prompt = '特徴から用語を当てる：次の特徴をもつのは？\n' + maskCard(c, rest);
+  const o = titleChoices(c, prompt, 3);
+  if (!o) return null;
   return { type: '場面・応用', cardId: c.id, prompt, ...withChoices(c.title, o) };
 }
 function mkContrast(c) {
@@ -157,14 +247,21 @@ function mkContrast(c) {
   const other = cardByTitle(pair.find(t => t !== c.title));
   if (!other) return null;
   const described = Math.random() < 0.5 ? c : other;
-  const o = otherCards(c, 2).filter(x => x.id !== other.id).map(x => x.title);
-  return { type: '対比・判別', cardId: c.id, prompt: '対比問題：次の説明に当てはまるのはどちら？\n' + shortDef(described), ...withChoices(described.title, [other.title === described.title ? c.title : other.title, ...o]) };
+  const notDescribed = described === c ? other : c;
+  // 対になる用語も伏せる（「予知保全は実際の劣化状態を見る」のような比較の一文で分かってしまうため）
+  const prompt = '対比問題：次の説明に当てはまるのはどれ？\n' + maskWords(shortDef(described), titleVariants(notDescribed));
+  const more = pickDistinct(similarCards(described).map(x => x.title).filter(t => t !== notDescribed.title), 2, prompt, described.title);
+  if (!more) return null;
+  return { type: '対比・判別', cardId: c.id, prompt, ...withChoices(described.title, [notDescribed.title, ...more]) };
 }
 function mkRelated(c) {
   const rel = c.related.split('、').map(s => s.trim()).filter(t => t && t !== c.title && cardByTitle(t));
   if (!rel.length) return null;
   const ans = rel[Math.floor(Math.random() * rel.length)];
-  const o = shuffle(CARDS.filter(x => x.title !== c.title && !rel.includes(x.title))).slice(0, 3).map(x => x.title);
+  // 誤答は同じ分野の用語から（関連語・自分自身は除く）
+  const cands = similarCards(c).map(x => x.title).filter(t => !rel.includes(t));
+  const o = pickDistinct(cands, 3, '', ans);
+  if (!o) return null;
   return { type: '関連キーワード', cardId: c.id, prompt: `「${c.title}」と関連が深い用語はどれ？`, ...withChoices(ans, o) };
 }
 const BUILDERS = { t2d: mkT2D, d2t: mkD2T, cloze: mkCloze, scenario: mkScenario, contrast: mkContrast, related: mkRelated };
@@ -180,7 +277,7 @@ function makeQuestion(c, prefer) {
     const q = BUILDERS[k](c);
     if (q) return q;
   }
-  return mkD2T(c);
+  return mkT2D(c) || mkD2T(c); // 用語→説明は全カードで必ず作れる
 }
 function startLesson(idx) {
   const cards = LESSONS[idx];
