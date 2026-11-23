@@ -127,6 +127,9 @@ JSON の書き出しは、アプリの中では `window.WorkoutApp.saveFile` に
 **ネットワーク優先**。取れたものを控えに回し、圏外のときだけ控えを出す。
 以前はキャッシュ優先だったため、更新を公開しても端末に届かなかった
 （`kakeibo-pwa` は同じ理由で Service Worker を撤去している）。
+さらに GitHub Pages の10分キャッシュで「HTML は新しく JS は古い」組み合わせが起きたため、
+Service Worker は `cache: 'no-cache'` で取りに行き、`workout/index.html` は `app.js?v=N` のように版を付けて読む
+（**workout を直したら `?v=` も上げる**）。
 
 自分のオリジン以外は素通しする。立替精算モジュールは GAS に `?month=...` を付けて
 問い合わせるので、以前の `ignoreSearch: true` の照合だと別の月の応答を

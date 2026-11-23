@@ -12,7 +12,7 @@
 <link rel="manifest" href="../manifest.webmanifest">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
-<link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./styles.css?v=32">
 </head>
 <body>
 <!-- レストタイマー。セットを入れると自動で動き出し、残りをここに出す -->
@@ -232,6 +232,7 @@
 </nav>
 
 <script src="../nav.js"></script>
-<script src="./app.js"></script>
+<!-- ?v= は更新のたびに上げる（HTML と JS の版がずれて画面が壊れるのを防ぐ） -->
+<script src="./app.js?v=32"></script>
 </body>
 </html>

@@ -13,7 +13,13 @@
  *   だったので、クエリ違いの応答を取り違える（先月の金額が出る）恐れがあった。
  *   自分のオリジン以外は触らない。
  */
-const CACHE = 'my-apps-v31';
+/* ■なぜ no-cache で取りに行くか
+ *   GitHub Pages はファイルを10分ほどブラウザに覚えさせる（max-age=600）。素の fetch だと
+ *   その控えが返り、HTML だけ新しく JS が古い、という組み合わせになって画面が壊れた
+ *   （隙間トレのカードが空になった）。no-cache は毎回サーバーに「変わったか」を聞くだけで、
+ *   変わっていなければ中身は送られない（304）ので通信量はほぼ増えない。
+ */
+const CACHE = 'my-apps-v32';
 const ASSETS = [
   './',
   './index.html',
@@ -56,7 +62,9 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE)
+    .then(c => c.addAll(ASSETS.map(u => new Request(u, { cache: 'reload' }))))
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
@@ -75,7 +83,7 @@ self.addEventListener('fetch', e => {
   if (!e.request.url.startsWith(self.registration.scope)) return;
 
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: 'no-cache' })
       .then(res => {
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
