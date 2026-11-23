@@ -250,13 +250,27 @@ button.danger { color: var(--danger); border-color: var(--danger); margin-top: 1
 
 /* ---------- 隙間トレ ---------- */
 .quick-hint { margin: 0 0 10px; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.chips button { padding: 7px 11px; font-size: 13px; border-radius: 999px; }
-.chips button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
-.quick-more {
-  width: 100%; font: inherit; font-size: 14px; color: var(--sub);
-  border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--card);
+/* 体の部位マップ。前と後ろの2体を並べ、部位をタップして選ぶ */
+.bodymap svg { display: block; width: 100%; max-width: 270px; margin: 0 auto; touch-action: manipulation; }
+.bodymap .base { fill: #ece8df; stroke: none; }
+.bodymap .part { fill: #d9d3c6; stroke: var(--card); stroke-width: 1.5; cursor: pointer; transition: fill .15s; }
+.bodymap .part.done { fill: #b9d3c7; }           /* 今日すでに隙間トレした部位 */
+.bodymap .part.on { fill: var(--accent); }
+.bodymap .side { font-size: 10px; fill: var(--sub); text-anchor: middle; }
+.muscle-tabs { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 8px 0 10px; }
+.muscle-tabs button { padding: 6px 12px; font-size: 13px; border-radius: 999px; }
+.muscle-tabs button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+/* 種目タイル。名前より絵で選べるように、イラストを大きく出す */
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(98px, 1fr)); gap: 8px; }
+.tiles:empty { display: none; }
+.tile {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 8px 6px; border-radius: 12px; text-align: center; min-width: 0;
 }
+.tile .ex-art, .tile .ex-art .art { width: 72px; height: 72px; }
+.tile .t-name { font-size: 12px; font-weight: 700; line-height: 1.35; }
+.tile .t-sub { font-size: 11px; color: var(--sub); }
+.tile.on { border-color: var(--accent); background: #e6f0eb; box-shadow: inset 0 0 0 1px var(--accent); }
 .quick-form { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 12px; }
 .quick-form[hidden] { display: none; }
 .quick-head { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }

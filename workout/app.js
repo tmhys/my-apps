@@ -778,57 +778,95 @@ document.getElementById('btn-save').addEventListener('click', () => {
    メニューを丸ごとできない日でも、やった分だけ 2 タップで残す。
    その日の隙間トレは1件（同じ id）にまとめるので、Obsidian に送り直しても
    日記の行は書き換わるだけで増えない。 */
-const QUICK_DEFAULT = ['pushup-bar', 'plank', 'ab-roller', 'squat', 'tube-curl', 'calf-raise', 'toe-gcp', 'superman'];
-const QUICK_CHIPS = 8;
+/* 体の部位マップ（前・後ろ）。部位をタップすると、その部位の種目を絵のタイルで並べる。
+   種目名のリストからは選びにくかったので、部位→絵の2段で選ぶ。 */
+const BODY_SVG = `<svg viewBox="0 0 200 214" role="img" aria-label="体の部位"><circle cx="50" cy="16" r="11" class="base"/><rect x="45" y="26" width="10" height="9" class="base"/><rect x="38" y="98" width="24" height="8" rx="3" class="base"/><ellipse cx="31" cy="43" rx="9" ry="8" class="part" data-m="arms"/><ellipse cx="69" cy="43" rx="9" ry="8" class="part" data-m="arms"/><rect x="20" y="51" width="10" height="31" rx="5" class="part" data-m="arms"/><rect x="70" y="51" width="10" height="31" rx="5" class="part" data-m="arms"/><rect x="17" y="84" width="9" height="29" rx="4.5" class="part" data-m="arms"/><rect x="74" y="84" width="9" height="29" rx="4.5" class="part" data-m="arms"/><rect x="36" y="37" width="13.5" height="22" rx="6" class="part" data-m="chest"/><rect x="50.5" y="37" width="13.5" height="22" rx="6" class="part" data-m="chest"/><rect x="38" y="61" width="24" height="36" rx="7" class="part" data-m="core"/><rect x="37" y="107" width="12" height="44" rx="6" class="part" data-m="legs"/><rect x="51" y="107" width="12" height="44" rx="6" class="part" data-m="legs"/><rect x="38" y="153" width="10" height="34" rx="5" class="part" data-m="legs"/><rect x="52" y="153" width="10" height="34" rx="5" class="part" data-m="legs"/><ellipse cx="43" cy="194" rx="7.5" ry="5" class="part" data-m="foot"/><ellipse cx="57" cy="194" rx="7.5" ry="5" class="part" data-m="foot"/><text x="50" y="210" class="side">まえ</text><circle cx="150" cy="16" r="11" class="base"/><rect x="145" y="26" width="10" height="9" class="base"/><rect x="138" y="98" width="24" height="8" rx="3" class="base"/><ellipse cx="131" cy="43" rx="9" ry="8" class="part" data-m="arms"/><ellipse cx="169" cy="43" rx="9" ry="8" class="part" data-m="arms"/><rect x="120" y="51" width="10" height="31" rx="5" class="part" data-m="arms"/><rect x="170" y="51" width="10" height="31" rx="5" class="part" data-m="arms"/><rect x="117" y="84" width="9" height="29" rx="4.5" class="part" data-m="arms"/><rect x="174" y="84" width="9" height="29" rx="4.5" class="part" data-m="arms"/><path d="M136 37 H164 L161 70 H139 Z" class="part" data-m="back"/><rect x="139" y="72" width="22" height="25" rx="5" class="part" data-m="back"/><rect x="137" y="107" width="12" height="44" rx="6" class="part" data-m="legs"/><rect x="151" y="107" width="12" height="44" rx="6" class="part" data-m="legs"/><rect x="138" y="153" width="10" height="34" rx="5" class="part" data-m="legs"/><rect x="152" y="153" width="10" height="34" rx="5" class="part" data-m="legs"/><ellipse cx="143" cy="194" rx="7.5" ry="5" class="part" data-m="foot"/><ellipse cx="157" cy="194" rx="7.5" ry="5" class="part" data-m="foot"/><text x="150" y="210" class="side">うしろ</text></svg>`;
+const MUSCLE_ORDER = ['chest', 'arms', 'core', 'back', 'legs', 'foot'];
+let quickMuscle = null;
 let quickKey = null;
 let quickSets = 1;
 let quickUndo = null; // { id, key, n } 直前に足した分。取り消し用
 let quickMsg = '';
 
-/** よく使う種目を先に。最近やった順に並べ、足りない分は既定で埋める。 */
-function quickCandidates() {
-  const seen = [];
-  sortedSessions().forEach(s => (s.logs || []).forEach(l => {
-    if (EX[l.key] && !seen.includes(l.key)) seen.push(l.key);
+/** 最後に使った日（新しい順に並べるため）。隙間トレで使った種目を少し優先する。 */
+function lastUsedRank() {
+  const rank = {};
+  sortedSessions().forEach((s, i) => (s.logs || []).forEach(l => {
+    const r = isQuick(s) ? i - 0.5 : i;
+    if (rank[l.key] === undefined || r < rank[l.key]) rank[l.key] = r;
   }));
-  // 隙間トレでやった種目を最優先（隙間でやるものは決まりがちなので）
-  const quick = [];
-  sortedSessions().filter(isQuick).forEach(s => (s.logs || []).forEach(l => {
-    if (EX[l.key] && !quick.includes(l.key)) quick.push(l.key);
-  }));
-  const out = [];
-  [...quick, ...seen, ...QUICK_DEFAULT].forEach(k => { if (!out.includes(k)) out.push(k); });
-  return out.slice(0, QUICK_CHIPS);
+  return rank;
 }
 
 function todayQuick() {
   return state.sessions.find(s => isQuick(s) && s.date === todayStr()) || null;
 }
 
+/** 最初に開く部位。前回の隙間トレの部位にしておくと、同じことを繰り返すときに速い。 */
+function defaultMuscle() {
+  const last = sortedSessions().find(isQuick);
+  const log = last && last.logs[last.logs.length - 1];
+  return log && EX[log.key] ? EX[log.key].muscle : null;
+}
+
+function initBodyMap() {
+  const wrap = document.getElementById('bodymap');
+  wrap.innerHTML = BODY_SVG;
+  wrap.querySelectorAll('.part').forEach(el => {
+    el.addEventListener('click', () => selectMuscle(el.dataset.m));
+    const t = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    t.textContent = MUSCLE_LABEL[el.dataset.m];
+    el.appendChild(t);
+  });
+  // 小さい部位（足など）は押しにくいので、文字のボタンでも選べるようにする
+  const tabs = document.getElementById('muscle-tabs');
+  MUSCLE_ORDER.forEach(m => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.dataset.m = m; b.textContent = MUSCLE_LABEL[m];
+    b.addEventListener('click', () => selectMuscle(m));
+    tabs.appendChild(b);
+  });
+  quickMuscle = defaultMuscle();
+}
+
+function selectMuscle(m) {
+  quickMuscle = m;
+  quickKey = null;
+  quickMsg = '';
+  renderQuick();
+}
+
 function renderQuick() {
   const qw = quickWeek();
   document.getElementById('quick-week').textContent = qw.sets ? `今週 ${qw.sets}セット` : '';
 
-  const chips = document.getElementById('quick-chips');
-  chips.innerHTML = '';
-  const cands = quickCandidates();
-  cands.forEach(key => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = EX[key].name.replace(/（.*?）/g, '');
-    b.classList.toggle('on', key === quickKey);
-    b.addEventListener('click', () => selectQuick(key === quickKey ? null : key));
-    chips.appendChild(b);
+  const entry = todayQuick();
+  const doneToday = new Set((entry ? entry.logs : []).map(l => EX[l.key] && EX[l.key].muscle));
+  document.querySelectorAll('#bodymap .part').forEach(el => {
+    el.classList.toggle('on', el.dataset.m === quickMuscle);
+    el.classList.toggle('done', doneToday.has(el.dataset.m));
   });
+  document.querySelectorAll('#muscle-tabs button').forEach(b =>
+    b.classList.toggle('on', b.dataset.m === quickMuscle));
 
-  const more = document.getElementById('quick-more');
-  more.innerHTML = '<option value="">ほかの種目…</option>';
-  CATALOG.filter(ex => !cands.includes(ex.key)).forEach(ex => {
-    const o = document.createElement('option');
-    o.value = ex.key; o.textContent = `${ex.name}（${MUSCLE_LABEL[ex.muscle]}）`;
-    more.appendChild(o);
-  });
-  more.value = quickKey && !cands.includes(quickKey) ? quickKey : '';
+  const tiles = document.getElementById('quick-tiles');
+  tiles.innerHTML = '';
+  if (quickMuscle) {
+    const rank = lastUsedRank();
+    CATALOG.filter(ex => ex.muscle === quickMuscle)
+      .sort((a, b) => (rank[a.key] ?? 1e9) - (rank[b.key] ?? 1e9))
+      .forEach(ex => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'tile' + (ex.key === quickKey ? ' on' : '');
+        b.innerHTML = '<span class="ex-art"></span><span class="t-name"></span><span class="t-sub"></span>';
+        b.querySelector('.ex-art').innerHTML = artSVG(ex.art);
+        b.querySelector('.t-name').textContent = ex.name.replace(/（.*?）/g, '');
+        b.querySelector('.t-sub').textContent = `${nextTargetFor(ex.key).target}${unitOf(ex.key)}`;
+        b.addEventListener('click', () => selectQuick(ex.key === quickKey ? null : ex.key));
+        tiles.appendChild(b);
+      });
+  }
 
   renderQuickForm();
   renderQuickToday();
@@ -888,7 +926,6 @@ document.getElementById('q-minus').addEventListener('click', () => quickStep(-1)
 document.getElementById('q-plus').addEventListener('click', () => quickStep(1));
 document.querySelectorAll('#q-sets button').forEach(b =>
   b.addEventListener('click', () => { quickSets = Number(b.dataset.v); renderQuickForm(); }));
-document.getElementById('quick-more').addEventListener('change', e => { if (e.target.value) selectQuick(e.target.value); });
 
 document.getElementById('q-save').addEventListener('click', () => {
   if (!quickKey) return;
@@ -1370,6 +1407,7 @@ document.getElementById('btn-wipe').addEventListener('click', () => {
 });
 
 /* ---------- 初期表示 ---------- */
+initBodyMap();
 renderHome();
 // 前回送れなかった分を拾う（圏外で保存したときなど）
 flushOutbox(false);
