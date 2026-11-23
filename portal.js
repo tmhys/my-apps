@@ -97,12 +97,27 @@ useAndroidApp('kakeibo-card', 'com.tmhys.kakeibo', 'kakeibo', 'アプリ');
     return url.toString();
   }
 
+  /**
+   * Android では intent:// で開く。Inbox は別ドメイン（workers.dev）なので、ランチャーの
+   * 範囲（scope）にどうしても入らず、普通のリンクだと左上にバツの付いた簡易ブラウザで開く。
+   * intent にすると、Inbox をホーム画面にアプリとして置いてあればそちらが起動する
+   * （置いた PWA のパッケージ名は端末ごとに違うので package は書けない。試し）。
+   * 起動できなければ browser_fallback_url で今までどおりのページが開く。
+   */
+  function inboxHref(url) {
+    if (!/Android/i.test(navigator.userAgent)) return url;
+    const u = new URL(url);
+    return 'intent://' + u.host + u.pathname + u.search +
+      '#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;' +
+      'S.browser_fallback_url=' + encodeURIComponent(url) + ';end';
+  }
+
   function render() {
     const url = read();
 
     // ランチャーを作り直して説明文（.tool-desc）は無くなった。残っていれば使う。
     if (url) {
-      card.setAttribute('href', url);
+      card.setAttribute('href', inboxHref(url));
       card.classList.remove('unset');
       nameEl.textContent = 'Inbox';
       if (descEl) descEl.textContent = 'Claude との会話で決めた TODO と、相談したいことのメモ。';
