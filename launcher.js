@@ -6,6 +6,9 @@
    読むもの（どれも同じオリジンの localStorage）
    - workoutLogPwa.summary … ワークアウトが自分で書く要約（ブラウザ版で開いたときだけ。
      Android アプリ版の記録はアプリの中にあり、ここからは見えない）
+   - 習慣グリッドのスナップショット（habit-pwa/data/habits.json）… 筋トレを記録すると
+     Obsidian 経由で習慣「💪 筋トレ」が付く。アプリ版で記録した日もここに出るので、
+     今週やった日数はこちらでも数える（反映は数分遅れ。取れた結果は portal:habitWorkout に控える）
    - pakuringo:state       … 技術士のキーワード学習
    - shopping:cache        … 買い物メモの最後の一覧
    - reimburse:cache       … 立替精算の最後の集計 */
@@ -31,14 +34,27 @@
   var st = {};
 
   var w = ls('workoutLogPwa.summary');
-  if (w && w.at) {
-    var thisWeek = w.at >= monday;
-    st.workout = {
-      week: thisWeek ? w.week : 0,
-      target: w.target || 3,
-      doneToday: w.at === today && w.doneToday,
-      next: w.next || '',
-    };
+
+  /** 筋トレの状況。ブラウザ版の要約と習慣グリッドの記録の、多いほうを採る。
+      （アプリ版だけで記録した週は要約が0のまま、習慣のほうに日が付いている） */
+  function workoutState() {
+    var x = null;
+    if (w && w.at) {
+      x = {
+        week: w.at >= monday ? w.week : 0,
+        target: w.target || 3,
+        doneToday: w.at === today && w.doneToday,
+        next: w.next || '',
+      };
+    }
+    var hb = ls(HABIT_CACHE);
+    if (hb && Array.isArray(hb.done)) {
+      var days = hb.done.filter(function (d) { return d >= monday && d <= today; });
+      x = x || { week: 0, target: 3, doneToday: false, next: '' };
+      x.week = Math.max(x.week, days.length);
+      x.doneToday = x.doneToday || days.indexOf(today) >= 0;
+    }
+    return x;
   }
 
   var p = ls('pakuringo:state');
@@ -56,10 +72,15 @@
   var rb = ls('reimburse:cache');
   if (rb && rb.model && typeof rb.model.itemCount === 'number') st.reimburse = { count: rb.model.itemCount };
 
+  var HABIT_CACHE = 'portal:habitWorkout';
+  var SNAPSHOT_URL = 'https://tmhys.github.io/habit-pwa/data/habits.json';
+
   function setStat(k, text) {
     var el = document.querySelector('[data-stat="' + k + '"]');
     if (el && text) { el.textContent = text; el.classList.add('live'); }
   }
+  function render() {
+  st.workout = workoutState();
   if (st.workout) setStat('workout', '今週 ' + st.workout.week + '/' + st.workout.target + '回' + (st.workout.doneToday ? ' ✓' : ''));
   if (st.gijutsushi) setStat('gijutsushi', '今日 ' + st.gijutsushi.xp + '/' + st.gijutsushi.goal + ' XP');
   if (st.shopping) setStat('shopping', st.shopping.waiting ? '発注待ち ' + st.shopping.waiting + '件' : '発注待ちなし');
@@ -71,6 +92,7 @@
   if (st.gijutsushi && st.gijutsushi.streak) pills.push(['技術士', st.gijutsushi.streak, '日連続']);
   if (st.reimburse && st.reimburse.count) pills.push(['未精算', st.reimburse.count, '件']);
   var pillsEl = document.getElementById('pills');
+  pillsEl.innerHTML = '';
   pills.forEach(function (x) {
     var s = document.createElement('span');
     s.appendChild(document.createTextNode(x[0] + ' '));
@@ -105,6 +127,8 @@
   var next = null;
   for (var i = 0; i < plan.length && !next; i++) next = plan[i]();
   var nextEl = document.getElementById('next');
+  nextEl.classList.remove('clear');
+  nextEl.querySelector('.go').textContent = '開く';
   if (next) {
     document.getElementById('next-label').textContent = next[0];
     nextEl.setAttribute('href', next[1]);
@@ -113,6 +137,33 @@
     nextEl.classList.add('clear');
     nextEl.setAttribute('href', workoutHref());
     nextEl.querySelector('.go').textContent = '筋トレ';
+  }
+  }
+
+  render();
+
+  // 習慣グリッドから「💪 筋トレ」を探す。id が分からないので、id と名前のどちらでも当てる。
+  function findWorkoutHabit(list) {
+    var ids = ['strength', 'workout', 'kintore', 'training', 'muscle'];
+    return list.find(function (h) { return ids.indexOf(String(h.id)) >= 0; }) ||
+      list.find(function (h) {
+        var label = [h.name, h.label, h.title, h.emoji, h.icon].filter(Boolean).join(' ');
+        return /筋トレ|💪/.test(label);
+      });
+  }
+
+  if (window.fetch) {
+    fetch(SNAPSHOT_URL, { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        var h = d && Array.isArray(d.habits) ? findWorkoutHabit(d.habits) : null;
+        if (!h || !Array.isArray(h.done)) return;
+        // 今週の分だけ控える（全期間は要らない）
+        var recent = h.done.filter(function (x) { return x >= monday; });
+        try { localStorage.setItem(HABIT_CACHE, JSON.stringify({ at: today, done: recent })); } catch (e) { /* 控えなくても表示はする */ }
+        render();
+      })
+      .catch(function () { /* 圏外なら控え（前回の結果）のまま */ });
   }
 
   // ---- ホーム画面に置く ----
