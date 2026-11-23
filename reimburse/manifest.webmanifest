@@ -1,0 +1,33 @@
+{
+ "id": "./",
+ "name": "立替精算",
+ "short_name": "立替精算",
+ "description": "妻が立て替えた分の未精算と送金額。",
+ "lang": "ja",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "orientation": "portrait",
+ "background_color": "#f4f2ed",
+ "theme_color": "#f4f2ed",
+ "icons": [
+  {
+   "src": "../icons/reimburse-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "../icons/reimburse-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "../icons/reimburse-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}

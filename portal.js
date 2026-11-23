@@ -100,24 +100,21 @@ useAndroidApp('kakeibo-card', 'com.tmhys.kakeibo', 'kakeibo', 'アプリ');
   function render() {
     const url = read();
 
+    // ランチャーを作り直して説明文（.tool-desc）は無くなった。残っていれば使う。
     if (url) {
       card.setAttribute('href', url);
       card.classList.remove('unset');
-      nameEl.textContent = 'Claude Inbox ';
-      const mark = document.createElement('span');
-      mark.className = 'ext-mark';
-      mark.textContent = '↗';
-      nameEl.appendChild(mark);
-      descEl.textContent = 'Claude との会話で決めた TODO と、相談したいことのメモ。';
-      setBtn.textContent = '変更';
+      nameEl.textContent = 'Inbox';
+      if (descEl) descEl.textContent = 'Claude との会話で決めた TODO と、相談したいことのメモ。';
+      setBtn.textContent = 'Inbox の接続先を変更';
       return;
     }
 
     card.removeAttribute('href');
     card.classList.add('unset');
-    nameEl.textContent = 'Claude Inbox';
-    descEl.textContent = 'まだ接続先が設定されていません。「設定する」を押して /app のURLを入れてください。';
-    setBtn.textContent = '設定する';
+    nameEl.textContent = 'Inbox'; // 未設定は薄く表示（.unset）。押すと設定が開く
+    if (descEl) descEl.textContent = 'まだ接続先が設定されていません。';
+    setBtn.textContent = 'Inbox の接続先を設定';
   }
 
   setBtn.addEventListener('click', (ev) => {
@@ -149,9 +146,11 @@ useAndroidApp('kakeibo-card', 'com.tmhys.kakeibo', 'kakeibo', 'アプリ');
     render();
   });
 
-  // 設定前のカードを押しても何も起きないようにする（href が無いので既定では何もしない）。
+  // 設定前のカードを押したら、接続先の入力を出す（何も起きないと壊れて見えるため）。
   card.addEventListener('click', (ev) => {
-    if (!read()) ev.preventDefault();
+    if (read()) return;
+    ev.preventDefault();
+    setBtn.click();
   });
 
   render();

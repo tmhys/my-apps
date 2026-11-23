@@ -580,6 +580,23 @@ function renderHome() {
   recent.innerHTML = last3.length ? '' : '<p class="empty">まだ記録はありません</p>';
   last3.forEach(s => recent.appendChild(sessionItemEl(s, false)));
   renderQuick();
+  writeSummary();
+}
+
+/* ランチャー（../launcher.js）に出す要約。ランチャーが記録の中身や
+   メニューの決め方を知らなくて済むよう、こちらで計算して置いておく。
+   Android アプリ版はブラウザと localStorage が別なので、ランチャーからは見えない。 */
+function writeSummary() {
+  try {
+    const nm = nextMenu();
+    localStorage.setItem('workoutLogPwa.summary', JSON.stringify({
+      at: todayStr(),
+      week: weekCount(),
+      target: state.settings.weeklyTarget,
+      doneToday: state.sessions.some(s => s.date === todayStr() && !isQuick(s)),
+      next: MENUS[nm] ? MENUS[nm].label : '',
+    }));
+  } catch (e) { /* 書けなくてもランチャーに出ないだけ */ }
 }
 document.getElementById('btn-start').addEventListener('click', () => openEditor(currentMenu));
 document.getElementById('btn-other-menu').addEventListener('click', () => {

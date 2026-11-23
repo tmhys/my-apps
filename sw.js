@@ -19,17 +19,26 @@
  *   （隙間トレのカードが空になった）。no-cache は毎回サーバーに「変わったか」を聞くだけで、
  *   変わっていなければ中身は送られない（304）ので通信量はほぼ増えない。
  */
-const CACHE = 'my-apps-v32';
+const CACHE = 'my-apps-v33';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
   './portal.js',
+  './launcher.js',
+  './install.js',
   './nav.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
+  './icons/workout-192.png',
+  './icons/reimburse-192.png',
+  './icons/shopping-192.png',
+  './icons/gijutsushi-192.png',
+  './reimburse/manifest.webmanifest',
+  './shopping/manifest.webmanifest',
+  './gijutsushi/manifest.webmanifest',
   './workout/',
   './workout/index.html',
   './workout/styles.css',

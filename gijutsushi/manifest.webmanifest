@@ -1,0 +1,33 @@
+{
+ "id": "./",
+ "name": "技術士 勉強",
+ "short_name": "技術士勉強",
+ "description": "技術士二次試験のキーワード学習と論文骨子。",
+ "lang": "ja",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "orientation": "portrait",
+ "background_color": "#f4f2ed",
+ "theme_color": "#f4f2ed",
+ "icons": [
+  {
+   "src": "../icons/gijutsushi-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "../icons/gijutsushi-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "../icons/gijutsushi-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}

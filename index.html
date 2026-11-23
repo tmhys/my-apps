@@ -4,83 +4,103 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>マイツール</title>
-<meta name="theme-color" content="#f4f2ed">
+<meta name="theme-color" content="#0d1512">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="マイツール">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
-<link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./styles.css?v=33">
 </head>
 <body>
-<header class="app-header">
-  <h1>マイツール</h1>
-  <p class="subtitle">自分のための小さなツール置き場</p>
-</header>
+<!-- 画面の上は見るだけ、押すものは親指の届く下半分に集める -->
+<div class="page">
+  <header class="top">
+    <div class="hello" id="hello">MY TOOLS</div>
+    <h1>今日も<br>やり切る。</h1>
+    <div class="today" id="today"></div>
+    <div class="pills" id="pills"></div>
+  </header>
 
-<main>
-  <div class="grid">
-    <!-- Android アプリ（WebView）がある。Android では portal.js が intent:// に差し替える -->
-    <a class="tool-card" id="workout-card" href="./workout/">
-      <div class="tool-emoji">💪</div>
-      <div class="tool-name">ワークアウトログ <span class="ext-mark"></span></div>
-      <div class="tool-desc">自宅筋トレの記録。A/B/Cローテーション＋背中・脚・フットケア、週3回・30分。</div>
+  <main class="bottom">
+    <!-- 別アプリ。小さいので押す頻度の低いものを上に -->
+    <div class="ext">
+      <!-- GitHub Pages のプロジェクトページ。公開先を変えたらここも直す -->
+      <a class="chip" href="https://tmhys.github.io/habit-pwa/">
+        <span class="chip-ic" style="--c1:#16a34a;--c2:#0e7a35"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 12.5l3 3 5-6"/></svg></span>
+        <span class="tool-name">習慣</span>
+      </a>
+      <!-- Android アプリ（WebView）。Android では portal.js が intent:// に差し替える -->
+      <a class="chip" id="kakeibo-card" href="https://tmhys.github.io/kakeibo-pwa/">
+        <span class="chip-ic" style="--c1:#e0457b;--c2:#b02a5c"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg></span>
+        <span class="tool-name">家計簿<span class="ext-mark"></span></span>
+      </a>
+      <!-- URL は端末の localStorage に置く（portal.js）。公開リポジトリに書かない -->
+      <a class="chip unset" id="inbox-card">
+        <span class="chip-ic" style="--c1:#d97a4a;--c2:#a9532a"><svg viewBox="0 0 24 24"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/></svg></span>
+        <span class="tool-name">Inbox</span>
+      </a>
+    </div>
+
+    <div class="grid">
+      <!-- Android アプリ（WebView）がある。Android では portal.js が intent:// に差し替える -->
+      <a class="card" id="workout-card" href="./workout/" style="--c1:#1f8a63;--c2:#0f5c41">
+        <span class="card-ic"><svg viewBox="0 0 24 24"><path d="M6 9v6M18 9v6M3 10.5v3M21 10.5v3M6 12h12"/></svg></span>
+        <span class="tool-name">ワークアウト<span class="ext-mark"></span></span>
+        <span class="stat" data-stat="workout">筋トレの記録</span>
+      </a>
+      <a class="card" href="./reimburse/" style="--c1:#e08a3c;--c2:#b9601c">
+        <span class="card-ic"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>
+        <span class="tool-name">立替精算</span>
+        <span class="stat" data-stat="reimburse">未精算と送金額</span>
+      </a>
+      <a class="card" href="./shopping/" style="--c1:#3b7bd8;--c2:#2456a8">
+        <span class="card-ic"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.4 11h10.2L20 7H6.2"/><circle cx="9" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg></span>
+        <span class="tool-name">買い物メモ</span>
+        <span class="stat" data-stat="shopping">LINEの「買っといて」</span>
+      </a>
+      <a class="card" href="./gijutsushi/" style="--c1:#8b5cf6;--c2:#5b34c4">
+        <span class="card-ic"><svg viewBox="0 0 24 24"><path d="M4 5.5C6.5 4 9.5 4 12 5.5v14c-2.5-1.5-5.5-1.5-8 0z"/><path d="M20 5.5C17.5 4 14.5 4 12 5.5v14c2.5-1.5 5.5-1.5 8 0z"/></svg></span>
+        <span class="tool-name">技術士 勉強</span>
+        <span class="stat" data-stat="gijutsushi">キーワードと論文骨子</span>
+      </a>
+      <!-- 新しいツールはここにカードとモジュールを追加する（launcher.js の TOOLS にも） -->
+    </div>
+
+    <!-- 次にやること。親指の真下に置く。中身は launcher.js が決める -->
+    <a class="next" id="next" href="./workout/">
+      <span><small>次にやること</small><b id="next-label">読み込み中…</b></span>
+      <span class="go">開く</span>
     </a>
-    <a class="tool-card" href="./reimburse/">
-      <div class="tool-emoji">🧾</div>
-      <div class="tool-name">立替精算</div>
-      <div class="tool-desc">妻が立て替えた分の未精算と送金額。送金したら精算済みにする。</div>
-    </a>
-    <a class="tool-card" href="./shopping/">
-      <div class="tool-emoji">🛒</div>
-      <div class="tool-name">買い物メモ</div>
-      <div class="tool-desc">LINE で来た「買っといて」と欲しいもの。発注待ち・未確認・発注済も。</div>
-    </a>
-    <a class="tool-card" href="./gijutsushi/">
-      <div class="tool-emoji">📚</div>
-      <div class="tool-name">技術士 勉強</div>
-      <div class="tool-desc">技術士二次試験（機械部門・機械設計）の勉強入口。キーワード学習（パクリンゴ）と論文骨子ドリル。</div>
-    </a>
-    <!-- 新しいツールはここにカードとモジュールを追加する -->
+
+    <div class="foot">
+      <button type="button" class="link" id="btn-pin">＋ ツールをホーム画面に置く</button>
+      <button type="button" class="link sub" id="inbox-set">Inbox の接続先</button>
+    </div>
+  </main>
+</div>
+
+<!-- ホーム画面に置く：ツールを選ぶシート -->
+<div class="sheet-back" id="pin-sheet" hidden>
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2>ホーム画面に置く</h2>
+    <p class="cap"><b>いちばん簡単：</b>ホーム画面の「マイツール」のアイコンを長押しすると、ツールの一覧が出ます。そこから好きなツールをホーム画面へドラッグすると、そのツールのアイコンになります。</p>
+    <p class="cap">または下から選ぶと、そのツールを単体のアプリとして置けます。</p>
+    <div class="pin-list">
+      <a class="pin-it" href="./reimburse/?install=1"><img src="./icons/reimburse-192.png" alt="">立替精算</a>
+      <a class="pin-it" href="./shopping/?install=1"><img src="./icons/shopping-192.png" alt="">買い物メモ</a>
+      <a class="pin-it" href="./gijutsushi/?install=1"><img src="./icons/gijutsushi-192.png" alt="">技術士 勉強</a>
+    </div>
+    <p class="cap small">ワークアウトは Android アプリ版があるので、アプリのアイコンを使ってください。</p>
+    <button type="button" class="sheet-close" id="pin-close">閉じる</button>
   </div>
+</div>
 
-  <h2 class="section">別アプリ</h2>
-  <p class="cap">
-    このポータルの外にある自分のアプリ。ホーム画面にはこのポータルだけ置いておけば、
-    ここから開ける。
-  </p>
-  <div class="grid">
-    <!-- GitHub Pages のプロジェクトページ。公開先を変えたらここも直す -->
-    <a class="tool-card external" href="https://tmhys.github.io/habit-pwa/">
-      <div class="tool-emoji">✅</div>
-      <div class="tool-name">習慣グリッド <span class="ext-mark">↗</span></div>
-      <div class="tool-desc">習慣の記録と可視化。Obsidian の習慣ログを一覧・詳細で見る。</div>
-    </a>
-    <!-- Android アプリ（WebView）。Android では portal.js が intent:// に差し替える -->
-    <a class="tool-card external" id="kakeibo-card" href="https://tmhys.github.io/kakeibo-pwa/">
-      <div class="tool-emoji">📊</div>
-      <div class="tool-name">らくな家計簿 <span class="ext-mark">↗</span></div>
-      <div class="tool-desc">家計の支出・履歴・分析。楽天家計簿（gas）がバックエンド。</div>
-    </a>
-    <!-- URL は端末の localStorage に置く（portal.js）。公開リポジトリに書かない -->
-    <a class="tool-card external unset" id="inbox-card">
-      <div class="tool-emoji">📥</div>
-      <div class="tool-name">Claude Inbox</div>
-      <div class="tool-desc">読み込み中…</div>
-      <button class="card-set" id="inbox-set" type="button">設定する</button>
-    </a>
-  </div>
-
-  <p class="hint">
-    データの持ち方はツールごとに違います。ワークアウトログは端末のブラウザ内だけ、
-    立替精算と別アプリは接続先のサーバー（自分の Google Apps Script）から読みます。
-    詳しくは各ツールの設定画面とリポジトリの README を見てください。
-  </p>
-</main>
-
-<script src="./portal.js"></script>
+<script src="./portal.js?v=33"></script>
+<script src="./launcher.js?v=33"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
