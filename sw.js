@@ -19,7 +19,7 @@
  *   （隙間トレのカードが空になった）。no-cache は毎回サーバーに「変わったか」を聞くだけで、
  *   変わっていなければ中身は送られない（304）ので通信量はほぼ増えない。
  */
-const CACHE = 'my-apps-v34';
+const CACHE = 'my-apps-v35';
 const ASSETS = [
   './',
   './index.html',

@@ -395,9 +395,40 @@ function shopBadgesHtml(r) {
   return h.join('');
 }
 
+/**
+ * 受け取った日時（gas の 'yyyy-MM-dd HH:mm:ss'）を、カードの頭に大きく出す形にする。
+ * 「いつ頼まれたか」がメタ情報の奥に埋もれて見落としやすかったため。
+ * 戻り値: { date: '11/22（土）', rel: '今日' | '昨日' | '3日前' | '', fresh: 2日以内か }
+ */
+function receivedLabel(at) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(at || ''));
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const days = Math.round((today - d) / 864e5);
+  const rel = days <= 0 ? '今日' : days === 1 ? '昨日' : days < 30 ? days + '日前'
+    : days < 365 ? Math.floor(days / 30) + 'か月前' : '';
+  return {
+    date: Number(m[2]) + '/' + Number(m[3]) + '（' + '日月火水木金土'[d.getDay()] + '）',
+    time: m[4] ? m[4] + ':' + m[5] : '',
+    rel: rel,
+    fresh: days <= 1,
+  };
+}
+
 function cardHtml(r) {
   const warn = r.duplicateWarn || r.overdue;
   const h = ['<div class="card' + (warn ? ' warn' : '') + '" data-id="' + esc(r.id) + '">'];
+
+  const when = receivedLabel(r.receivedAt);
+  if (when) {
+    h.push('<div class="when' + (when.fresh ? ' fresh' : '') + '">' +
+      '<span class="when-date">' + esc(when.date) + '</span>' +
+      (when.rel ? '<span class="when-rel">' + esc(when.rel) + '</span>' : '') +
+      '<span class="when-who">' + esc(r.speaker || '') + (when.time ? ' ' + esc(when.time) : '') + '</span>' +
+      '</div>');
+  }
 
   h.push('<div class="name">' + esc(r.item) +
     (r.quantity ? ' ×' + esc(r.quantity) + esc(r.unit || '') : '') + '</div>');
@@ -414,7 +445,7 @@ function cardHtml(r) {
   if (r.lastBought) meta.push(esc(r.lastBought));
   if (r.stockSignal) meta.push('在庫: ' + esc(r.stockSignal));
   if (r.note) meta.push(esc(r.note));
-  meta.push(esc(r.speaker) + ' ' + esc(r.receivedAt));
+  if (!when) meta.push(esc(r.speaker) + ' ' + esc(r.receivedAt)); // 日付が読めないときだけ従来どおり
   if (tab === 'dismissed' && r.dismissedAt) meta.push('見送り: ' + esc(r.dismissedAt));
   h.push('<div class="meta">' + meta.join('<br>') + '</div>');
 
@@ -477,7 +508,12 @@ function render() {
     btn.querySelector('.n').textContent = rows.length ? rows.length : '';
   });
 
-  const rows = tab === 'dismissed' ? dismissed : (list[tab] || []);
+  let rows = tab === 'dismissed' ? dismissed : (list[tab] || []);
+  // 欲しいものは新しく頼まれた順（gas は期限→古い順で返すが、期限の無いものがほとんどで、
+  // 最近言われたものが下に埋もれていた）。同じ形式の文字列なので文字列比較で日時順になる。
+  if (tab === 'wishlist') {
+    rows = rows.slice().sort((a, b) => String(b.receivedAt || '').localeCompare(String(a.receivedAt || '')));
+  }
   el('list').innerHTML = rows.length
     ? rows.map(cardHtml).join('')
     : '<div class="empty">ここは空です</div>';
