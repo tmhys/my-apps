@@ -3,7 +3,10 @@
    データは localStorage のみに保存（キー: workoutLogPwa.v1）。
    設定すれば habit-relay 経由で Obsidian の日記にも記録を残す（キー: workoutLogPwa.obsidian）。
    進行ルール: 全セット目標クリア & RPE<=7 で次回 +1回（秒数は +5秒）。RPE>=9 か未達で据え置き。
-   メニュー: A/B/C が基本ローテーション（各2種類から交互に提示）。D（背中）とE（脚＋フットケア）は任意の日。 */
+   メニュー: A/B/C が基本ローテーション（各2種類から交互に提示）。D（背中）とE（脚＋フットケア）は任意の日。
+   隙間トレ（template: 'quick'）: メニュー外でやった分だけ残す。1日1件にまとめる。
+     メニューの順番・次回の目標・週の回数・総回数のグラフには入れない（自己ベストと部位バランスには入れる）。
+   途中で終わった記録（partial: true）: 週の回数には数えるが、順番と次回の目標は進めない。 */
 
 const STORE_KEY = 'workoutLogPwa.v1';
 
@@ -260,8 +263,13 @@ const MENUS = {
 const MENU_ORDER = Object.keys(MENUS);
 const ROTATION = ['A', 'B', 'C'];
 const LEGACY_LABEL = { A: 'A（胸＋三頭）', B: 'B（腕＋肩）', C: 'C（胸＋腹）' };
+const QUICK = 'quick';
+function isQuick(s) { return s && s.template === QUICK; }
+/** メニューの順番と次回の目標を決めるのに使ってよい記録か。 */
+function countsForPlan(s) { return !isQuick(s) && !s.partial; }
 function menuLabel(id) {
   if (id === 'free') return '自由';
+  if (id === QUICK) return '隙間トレ';
   if (MENUS[id]) return MENUS[id].label;
   return LEGACY_LABEL[id] || id;
 }
@@ -298,7 +306,9 @@ function sortedSessions() {
   return [...state.sessions].sort((a, b) => (b.date + b.id).localeCompare(a.date + a.id));
 }
 function lastLogFor(key) {
-  for (const s of sortedSessions()) {
+  // 隙間トレと途中で終わった回は、次回の目標を動かさない（1セットだけの記録で
+  // 次回のセット数が1に減ったり、途中の回で目標が上がったりしないように）。
+  for (const s of sortedSessions().filter(countsForPlan)) {
     const log = (s.logs || []).find(l => l.key === key);
     if (log) return { session: s, log };
   }
@@ -320,10 +330,11 @@ function nextTargetFor(key) {
   return { sets: setsCount, target };
 }
 function nextMenu() {
-  const last = sortedSessions().find(s => ROTATION.includes(groupOf(s.template)));
+  const plan = sortedSessions().filter(countsForPlan);
+  const last = plan.find(s => ROTATION.includes(groupOf(s.template)));
   const group = last ? ROTATION[(ROTATION.indexOf(groupOf(last.template)) + 1) % ROTATION.length] : 'A';
   const variants = MENU_ORDER.filter(id => MENUS[id].group === group);
-  const done = state.sessions.filter(s => groupOf(s.template) === group).length;
+  const done = plan.filter(s => groupOf(s.template) === group).length;
   return variants[done % variants.length];
 }
 function weekCount() {
@@ -333,7 +344,17 @@ function weekCount() {
   const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
   const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const lo = fmt(monday), hi = fmt(sunday);
-  return state.sessions.filter(s => s.date >= lo && s.date <= hi).length;
+  return state.sessions.filter(s => s.date >= lo && s.date <= hi && !isQuick(s)).length;
+}
+/** 今週の隙間トレの日数とセット数。 */
+function quickWeek() {
+  const now = new Date();
+  const dow = (now.getDay() + 6) % 7;
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow);
+  const lo = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+  const list = state.sessions.filter(s => isQuick(s) && s.date >= lo);
+  const sets = list.reduce((a, s) => a + (s.logs || []).reduce((b, l) => b + (l.sets || []).length, 0), 0);
+  return { days: list.length, sets };
 }
 function fmtSets(log) {
   const unit = EX[log.key] && EX[log.key].unit === 'sec' ? '秒' : '回';
@@ -397,7 +418,7 @@ function muscleBalance(weeks) {
 
 /** 連続して週の目標を満たした週の数と、今週の消化数。 */
 function streak() {
-  const dates = new Set(state.sessions.map(s => s.date));
+  const dates = new Set(state.sessions.filter(s => !isQuick(s)).map(s => s.date));
   const target = state.settings.weeklyTarget || 3;
   const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const now = new Date();
@@ -558,6 +579,7 @@ function renderHome() {
   const last3 = sortedSessions().slice(0, 3);
   recent.innerHTML = last3.length ? '' : '<p class="empty">まだ記録はありません</p>';
   last3.forEach(s => recent.appendChild(sessionItemEl(s, false)));
+  renderQuick();
 }
 document.getElementById('btn-start').addEventListener('click', () => openEditor(currentMenu));
 document.getElementById('btn-other-menu').addEventListener('click', () => {
@@ -599,6 +621,7 @@ function openEditor(menuId) {
   document.getElementById('f-template').value = menuId;
   document.getElementById('f-runfeel').value = '';
   document.getElementById('f-note').value = '';
+  document.getElementById('f-partial').checked = false;
   editorLeg = null;
   document.querySelectorAll('#f-leg button').forEach(b => b.classList.remove('on'));
   buildEditorLogs(menuId);
@@ -740,6 +763,7 @@ document.getElementById('btn-save').addEventListener('click', () => {
     note: document.getElementById('f-note').value.trim(),
     logs,
   };
+  if (document.getElementById('f-partial').checked) entry.partial = true;
   state.sessions.push(entry);
   save();
   // Obsidianへの転記は待たない（圏外でも保存は終わっていてよい。outbox が後で送る）
@@ -750,6 +774,174 @@ document.getElementById('btn-save').addEventListener('click', () => {
   show('view-history');
 });
 
+/* ---------- 隙間トレ ----------
+   メニューを丸ごとできない日でも、やった分だけ 2 タップで残す。
+   その日の隙間トレは1件（同じ id）にまとめるので、Obsidian に送り直しても
+   日記の行は書き換わるだけで増えない。 */
+const QUICK_DEFAULT = ['pushup-bar', 'plank', 'ab-roller', 'squat', 'tube-curl', 'calf-raise', 'toe-gcp', 'superman'];
+const QUICK_CHIPS = 8;
+let quickKey = null;
+let quickSets = 1;
+let quickUndo = null; // { id, key, n } 直前に足した分。取り消し用
+let quickMsg = '';
+
+/** よく使う種目を先に。最近やった順に並べ、足りない分は既定で埋める。 */
+function quickCandidates() {
+  const seen = [];
+  sortedSessions().forEach(s => (s.logs || []).forEach(l => {
+    if (EX[l.key] && !seen.includes(l.key)) seen.push(l.key);
+  }));
+  // 隙間トレでやった種目を最優先（隙間でやるものは決まりがちなので）
+  const quick = [];
+  sortedSessions().filter(isQuick).forEach(s => (s.logs || []).forEach(l => {
+    if (EX[l.key] && !quick.includes(l.key)) quick.push(l.key);
+  }));
+  const out = [];
+  [...quick, ...seen, ...QUICK_DEFAULT].forEach(k => { if (!out.includes(k)) out.push(k); });
+  return out.slice(0, QUICK_CHIPS);
+}
+
+function todayQuick() {
+  return state.sessions.find(s => isQuick(s) && s.date === todayStr()) || null;
+}
+
+function renderQuick() {
+  const qw = quickWeek();
+  document.getElementById('quick-week').textContent = qw.sets ? `今週 ${qw.sets}セット` : '';
+
+  const chips = document.getElementById('quick-chips');
+  chips.innerHTML = '';
+  const cands = quickCandidates();
+  cands.forEach(key => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = EX[key].name.replace(/（.*?）/g, '');
+    b.classList.toggle('on', key === quickKey);
+    b.addEventListener('click', () => selectQuick(key === quickKey ? null : key));
+    chips.appendChild(b);
+  });
+
+  const more = document.getElementById('quick-more');
+  more.innerHTML = '<option value="">ほかの種目…</option>';
+  CATALOG.filter(ex => !cands.includes(ex.key)).forEach(ex => {
+    const o = document.createElement('option');
+    o.value = ex.key; o.textContent = `${ex.name}（${MUSCLE_LABEL[ex.muscle]}）`;
+    more.appendChild(o);
+  });
+  more.value = quickKey && !cands.includes(quickKey) ? quickKey : '';
+
+  renderQuickForm();
+  renderQuickToday();
+}
+
+function selectQuick(key) {
+  quickKey = key;
+  quickSets = 1;
+  quickMsg = '';
+  if (key) document.getElementById('q-value').value = nextTargetFor(key).target;
+  renderQuick();
+}
+
+function renderQuickForm() {
+  const form = document.getElementById('quick-form');
+  form.hidden = !quickKey;
+  if (!quickKey) return;
+  const ex = EX[quickKey];
+  document.getElementById('quick-art').innerHTML = artSVG(ex.art);
+  document.getElementById('quick-name').textContent = ex.name;
+  const best = personalBests()[quickKey];
+  document.getElementById('quick-pr').textContent = best ? `自己ベスト ${best.value}${unitOf(quickKey)}` : '';
+  document.getElementById('q-unit').textContent = unitOf(quickKey);
+  document.querySelectorAll('#q-sets button').forEach(b =>
+    b.classList.toggle('on', Number(b.dataset.v) === quickSets));
+}
+
+function renderQuickToday() {
+  const el = document.getElementById('quick-today');
+  el.innerHTML = '';
+  const entry = todayQuick();
+  if (quickMsg) {
+    const m = document.createElement('span');
+    m.className = 'done'; m.textContent = quickMsg;
+    el.appendChild(m);
+    if (quickUndo) {
+      const u = document.createElement('button');
+      u.type = 'button'; u.textContent = '取り消す';
+      u.addEventListener('click', undoQuick);
+      el.appendChild(u);
+    }
+    el.appendChild(document.createTextNode('\n'));
+  }
+  if (entry && entry.logs.length) {
+    el.appendChild(document.createTextNode('今日の隙間トレ：' + entry.logs.map(l => `${l.name} ${fmtSets(l)}`).join('、')));
+  }
+}
+
+function quickStep(dir) {
+  if (!quickKey) return;
+  const inp = document.getElementById('q-value');
+  const step = EX[quickKey].unit === 'sec' ? 5 : 1;
+  const v = (parseInt(inp.value, 10) || 0) + dir * step;
+  inp.value = Math.max(1, Math.min(999, v));
+}
+document.getElementById('q-minus').addEventListener('click', () => quickStep(-1));
+document.getElementById('q-plus').addEventListener('click', () => quickStep(1));
+document.querySelectorAll('#q-sets button').forEach(b =>
+  b.addEventListener('click', () => { quickSets = Number(b.dataset.v); renderQuickForm(); }));
+document.getElementById('quick-more').addEventListener('change', e => { if (e.target.value) selectQuick(e.target.value); });
+
+document.getElementById('q-save').addEventListener('click', () => {
+  if (!quickKey) return;
+  const value = parseInt(document.getElementById('q-value').value, 10);
+  if (!Number.isFinite(value) || value <= 0) { alert('回数（秒数）を入れてください'); return; }
+  const key = quickKey;
+  const ex = EX[key];
+  const prev = bestValueFor(key);
+
+  let entry = todayQuick();
+  if (!entry) {
+    entry = { id: uid(), date: todayStr(), template: QUICK, legFatigue: null, runFeel: '', note: '', logs: [] };
+    state.sessions.push(entry);
+  }
+  let log = entry.logs.find(l => l.key === key);
+  if (!log) {
+    log = { key, name: ex.name, muscle: ex.muscle, equipment: ex.equipment, target: null, sets: [], variation: '', effort: null };
+    entry.logs.push(log);
+  }
+  for (let i = 0; i < quickSets; i++) log.sets.push(value);
+  save();
+  sendSession(entry); // 同じ id なので、日記の行は書き換わる
+
+  quickUndo = { id: entry.id, key, n: quickSets };
+  const pr = value > prev && prev > 0 ? '　自己ベスト更新！' : '';
+  quickMsg = `${ex.name} ${value}${unitOf(key)} × ${quickSets} を記録しました${pr}`;
+  quickKey = null;
+  quickSets = 1;
+  renderHome();
+});
+
+function undoQuick() {
+  if (!quickUndo) return;
+  const entry = state.sessions.find(s => s.id === quickUndo.id);
+  if (entry) {
+    const log = entry.logs.find(l => l.key === quickUndo.key);
+    if (log) {
+      log.sets.splice(-quickUndo.n, quickUndo.n);
+      if (!log.sets.length) entry.logs = entry.logs.filter(l => l !== log);
+    }
+    if (!entry.logs.length) {
+      state.sessions = state.sessions.filter(s => s !== entry);
+      outboxDrop(entry.id); // 空になった記録は送らない（送信済みの日記の行は日記側で消す）
+    } else {
+      sendSession(entry);
+    }
+    save();
+  }
+  quickUndo = null;
+  quickMsg = '取り消しました';
+  renderHome();
+}
+
 /* ---------- 履歴 ---------- */
 function sessionItemEl(s, withDelete) {
   const div = document.createElement('div');
@@ -758,7 +950,7 @@ function sessionItemEl(s, withDelete) {
   head.className = 'session-head';
   head.innerHTML = `<span class="date"></span><span></span>`;
   head.children[0].textContent = s.date;
-  head.children[1].textContent = menuLabel(s.template);
+  head.children[1].textContent = menuLabel(s.template) + (s.partial ? '（途中まで）' : '');
   div.appendChild(head);
   const detail = document.createElement('div');
   detail.className = 'session-detail';
@@ -817,7 +1009,11 @@ function renderProgress() {
 /** 続いているか。直近12週のカレンダー。 */
 function renderCalendar() {
   const byDate = {};
-  state.sessions.forEach(s => { byDate[s.date] = groupOf(s.template) || '-'; });
+  // 隙間トレだけの日は薄く「＋」。同じ日にメニューもやっていればメニューを出す。
+  state.sessions.forEach(s => {
+    if (isQuick(s)) { if (!byDate[s.date]) byDate[s.date] = QUICK; return; }
+    byDate[s.date] = groupOf(s.template) || '-';
+  });
 
   const st = streak();
   const sum = document.getElementById('streak-summary');
@@ -841,7 +1037,10 @@ function renderCalendar() {
       const cell = document.createElement('div');
       cell.className = 'cal-cell';
       if (day > now) cell.classList.add('future');
-      if (byDate[key]) {
+      if (byDate[key] === QUICK) {
+        cell.classList.add('quick');
+        cell.textContent = '＋';
+      } else if (byDate[key]) {
         cell.classList.add('on');
         cell.textContent = byDate[key];
       }
@@ -855,7 +1054,7 @@ function renderCalendar() {
 /** 1回あたりの総回数。直近12回を棒で。 */
 function renderVolume() {
   const wrap = document.getElementById('volume-chart');
-  const rows = sortedSessions().slice(0, 12).reverse()
+  const rows = sortedSessions().filter(s => !isQuick(s)).slice(0, 12).reverse()
     .map(s => ({ date: s.date.slice(5).replace('-', '/'), v: sessionVolume(s) }))
     .filter(r => r.v > 0);
 
@@ -998,7 +1197,7 @@ function sessionPayload(s) {
     if (!isNaN(noon.getTime())) epoch = Math.floor(noon.getTime() / 1000);
   }
 
-  const payload = { id: s.id, epoch, menu: menuLabel(s.template), exercises };
+  const payload = { id: s.id, epoch, menu: menuLabel(s.template) + (s.partial ? '（途中まで）' : ''), exercises };
   if (s.legFatigue) payload.legFatigue = s.legFatigue;
   if (s.runFeel) payload.runFeel = s.runFeel;
   if (s.note) payload.note = s.note;
