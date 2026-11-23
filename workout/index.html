@@ -52,6 +52,40 @@
         <button id="btn-open-legs" type="button">脚＋足の日（E）</button>
       </div>
     </div>
+    <!-- 隙間トレ：メニューを丸ごとできない日も、やった分だけ残す -->
+    <div class="card">
+      <div class="card-head">
+        <h2>隙間トレ</h2>
+        <span id="quick-week" class="badge"></span>
+      </div>
+      <p class="hint quick-hint">メニューを丸ごとできない日も、やった分だけ残せます。種目を選んで「記録」。同じ日の分は1件にまとまります（メニューの順番や次回の目標は動きません）。</p>
+      <div id="quick-chips" class="chips"></div>
+      <select id="quick-more" class="quick-more" aria-label="ほかの種目"></select>
+      <div id="quick-form" class="quick-form" hidden>
+        <div class="quick-head">
+          <span class="ex-art" id="quick-art"></span>
+          <div class="quick-title"><b id="quick-name"></b><span id="quick-pr" class="ex-pr"></span></div>
+        </div>
+        <div class="stepper">
+          <button type="button" id="q-minus" aria-label="減らす">−</button>
+          <input type="number" id="q-value" inputmode="numeric" min="1" max="999">
+          <span id="q-unit">回</span>
+          <button type="button" id="q-plus" aria-label="増やす">＋</button>
+        </div>
+        <div class="field">セット数
+          <div id="q-sets" class="seg">
+            <button type="button" data-v="1" class="on">1</button>
+            <button type="button" data-v="2">2</button>
+            <button type="button" data-v="3">3</button>
+            <button type="button" data-v="4">4</button>
+            <button type="button" data-v="5">5</button>
+          </div>
+        </div>
+        <button id="q-save" type="button" class="primary">記録する</button>
+      </div>
+      <div id="quick-today" class="quick-today"></div>
+    </div>
+
     <div class="card">
       <h2>直近の記録</h2>
       <div id="recent-list"></div>
@@ -91,6 +125,10 @@
       <label class="field">メモ
         <input type="text" id="f-note" placeholder="任意">
       </label>
+      <label class="check">
+        <input type="checkbox" id="f-partial">
+        <span>途中で終わった（次回も同じメニュー・同じ目標にする）</span>
+      </label>
       <div class="row">
         <button id="btn-save" class="primary">保存する</button>
         <button id="btn-cancel" type="button">キャンセル</button>
@@ -112,7 +150,7 @@
       <h2>続いているか</h2>
       <div id="streak-summary" class="streak-summary"></div>
       <div id="calendar"></div>
-      <p class="hint">濃いマスがやった日。文字はメニュー（A〜E）。</p>
+      <p class="hint">濃いマスがやった日。文字はメニュー（A〜E）。薄いマスの「＋」は隙間トレだけの日（週の回数には数えない）。</p>
     </div>
 
     <div class="card">
